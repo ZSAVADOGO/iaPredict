@@ -1,0 +1,38 @@
+{% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="fr">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>
+            {% block title %} Mining Text {% endblock %}
+        </title>
+        {% tailwind_css %}
+    </head>
+    <body class="bg-gray-100 min-h-screen flex flex-col">
+        <!-- Barre de navigation (Fixée en haut) -->
+        <nav class="flex justify-center gap-6 p-4 bg-white shadow-sm w-full">
+            <a href="{% url 'index' %}"
+               class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm font-medium">
+                Accueil
+            </a>
+            <a href="{% url 'parametre' %}"
+               class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium cursor-pointer">
+                Parametres
+            </a>
+
+             <a href="{% url 'agent_ia' %}"
+               class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium cursor-pointer">
+                Agents IA
+            </a>
+        </nav>
+        <!-- Zone de contenu (Prend tout l'espace restant et centre le bloc) -->
+        <main class="flex-1 flex items-center justify-center p-4">
+            <div class="w-full max-w-6xl">
+                <!-- Optionnel : limite la largeur du contenu -->
+                {% block content %}
+                {% endblock %}
+            </div>
+        </main>
+    </body>
+</html>

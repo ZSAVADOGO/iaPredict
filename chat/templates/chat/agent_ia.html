@@ -1,0 +1,138 @@
+{% extends 'chat/base.html' %}
+{% block content %}
+    <div id="chat-container"
+         class="w-full md:w-6/12 bg-white rounded-xl shadow-lg flex flex-col h-[600px]">
+        <!-- Chat Box -->
+        <div id="chat-box" class="flex-1 p-4 overflow-y-auto space-y-4">
+            {% for msg in messages %}
+                {% if msg.sender == 'user' %}
+                    <div class="flex flex-col items-end mb-2">
+                        <div class="bg-green-200 text-gray-800 px-4 py-2 rounded-2xl max-w-[70%]">{{ msg.content }}</div>
+                        <div class="text-gray-400 text-xs mt-1">{{ msg.timestamp|date:"H:i" }}</div>
+                    </div>
+                {% else %}
+                    <div class="flex flex-col items-start mb-2">
+                        <div class="bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl max-w-[70%]">{{ msg.content }}</div>
+                        <div class="text-gray-400 text-xs mt-1">{{ msg.timestamp|date:"H:i" }}</div>
+                    </div>
+                {% endif %}
+            {% endfor %}
+        </div>
+        <!-- Loading -->
+        <div id="loading" class="hidden text-gray-500 italic px-4 py-2 bg-gray-50">Système est en train de répondre...</div>
+        <!-- Formulaire - Toujours visible (sticky au bas du container) -->
+        <div class="mt-auto">
+            <form id="chat-form"
+                  method="POST"
+                  class="flex border-t border-gray-300 bg-white">
+                {% csrf_token %}
+                <input type="text"
+                       id="message"
+                       placeholder="Écrire votre message..."
+                       autocomplete="off"
+                       class="flex-1 p-3 outline-none text-gray-700 focus:ring-2 focus:ring-teal-500">
+                <button type="submit"
+                        class="bg-teal-600 text-white px-6 font-bold hover:bg-teal-700 transition-colors">
+                    Envoyer
+                </button>
+            </form>
+        </div>
+    </div>
+    <script>
+console.log("Le script est chargé !"); // Si ça n'apparaît pas, le problème est l'emplacement du script
+
+function appendMessage(sender, text) {
+    const chatBox = document.getElementById('chat-box');
+    if (!chatBox) return;
+
+    let bgColor = 'bg-gray-100 text-gray-800'; // Message IA (Gris)
+    let alignment = 'items-start';
+
+    if (sender === 'user') {
+        // Couleur plus vive (Teal) avec texte BLANC pour une visibilité maximale
+        bgColor = 'bg-teal-600 text-white font-medium'; 
+        alignment = 'items-end';
+    } else if (sender === 'error') {
+        bgColor = 'bg-red-500 text-white border border-red-600';
+        alignment = 'items-center';
+    }
+
+    const html = `
+        <div class="flex flex-col ${alignment} mb-2 animate-fade-in">
+            <div class="${bgColor} px-4 py-2 rounded-2xl rounded-tr-none max-w-[80%] shadow-md text-sm">
+                ${text}
+            </div>
+            <div class="text-[10px] text-gray-400 mt-1 mx-1">
+                ${sender === 'user' ? 'Vous' : 'IA'} • ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+            </div>
+        </div>
+    `;
+    chatBox.insertAdjacentHTML('beforeend', html);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+{% comment %} function appendMessage(sender, text) {
+    const chatBox = document.getElementById('chat-box');
+    if (!chatBox) return;
+
+    let bgColor = 'bg-gray-100';
+    let alignment = 'items-start';
+
+    if (sender === 'user') {
+        bgColor = 'bg-green-200';
+        alignment = 'items-end';
+    } else if (sender === 'error') {
+        bgColor = 'bg-red-100 text-red-700 border border-red-200';
+        alignment = 'items-center';
+    }
+
+    const html = `
+        <div class="flex flex-col ${alignment} mb-2">
+            <div class="${bgColor} px-4 py-2 rounded-2xl max-w-[75%] shadow-sm text-sm">${text}</div>
+        </div>
+    `;
+    chatBox.insertAdjacentHTML('beforeend', html);
+    chatBox.scrollTop = chatBox.scrollHeight;
+} {% endcomment %}
+
+
+document.getElementById('chat-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const messageInput = document.getElementById('message');
+    const loadingId = document.getElementById('loading');
+    const message = messageInput.value.trim();
+
+    if (!message) return;
+
+    // Affichage utilisateur
+    appendMessage('user', message);
+    messageInput.value = '';
+    loadingId.classList.remove('hidden');
+
+    // Appel AJAX
+    fetch("{% url 'get_agent_api_response' %}", {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({'message': message})
+    })
+    .then(response => response.json().then(data => ({ status: response.status, body: data })))
+    .then(res => {
+        loadingId.classList.add('hidden');
+        if (res.status !== 200) {
+            throw new Error(res.body.error || "Erreur inconnue");
+        }
+        appendMessage('ai', res.body.content);
+    })
+    .catch(error => {
+        loadingId.classList.add('hidden');
+        console.error("Erreur JS:", error);
+        appendMessage('error', "Erreur : " + error.message);
+    });
+});
+
+    </script>
+{% endblock %}

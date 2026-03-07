@@ -1,0 +1,405 @@
+{% extends 'chat/base.html' %}
+{% block content %}
+
+    <div class="w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-4">
+        <!-- Zone de chat principale - md:w-6/12 -->
+        <div id="chat-container"
+             class="w-full md:w-6/12 bg-white rounded-xl shadow-lg flex flex-col h-[600px]">
+            <!-- Chat Box -->
+            <div id="chat-box" class="flex-1 p-4 overflow-y-auto space-y-4">
+                {% for msg in messages %}
+                    {% if msg.sender == 'user' %}
+                        <div class="flex flex-col items-end mb-2">
+                            <div class="bg-green-200 text-gray-800 px-4 py-2 rounded-2xl max-w-[70%]">{{ msg.content }}</div>
+                            <div class="text-gray-400 text-xs mt-1">{{ msg.timestamp|date:"H:i" }}</div>
+                        </div>
+                    {% else %}
+                        <div class="flex flex-col items-start mb-2">
+                            <div class="bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl max-w-[70%]">{{ msg.content }}</div>
+                            <div class="text-gray-400 text-xs mt-1">{{ msg.timestamp|date:"H:i" }}</div>
+                        </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            <!-- Loading -->
+            <div id="loading" class="hidden text-gray-500 italic px-4 py-2 bg-gray-50">Système est en train de répondre...</div>
+            <!-- Formulaire - Toujours visible (sticky au bas du container) -->
+            <div class="mt-auto">
+                <form id="chat-form"
+                      method="POST"
+                      class="flex border-t border-gray-300 bg-white">
+                    {% csrf_token %}
+                    <input type="text"
+                           id="message"
+                           placeholder="Écrire votre message..."
+                           autocomplete="off"
+                           class="flex-1 p-3 outline-none text-gray-700 focus:ring-2 focus:ring-teal-500">
+                    <button type="submit"
+                            class="bg-teal-600 text-white px-6 font-bold hover:bg-teal-700 transition-colors">
+                        Envoyer
+                    </button>
+                </form>
+            </div>
+        </div>
+        <!-- Barre latérale droite - md:w-3/12 -->
+        <div class="w-full md:w-3/12 flex flex-col gap-4 h-[600px]">
+            <div class="bg-white rounded-xl shadow-lg p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-bold text-gray-800">Sources SQL</h3>
+                    <a href="{% url 'add_source' %}"
+                       class="text-xs bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-md">+ Ajouter</a>
+                </div>
+                <div class="max-h-64 overflow-y-auto border border-gray-200 rounded-lg bg-white shadow-sm custom-scrollbar">
+
+                    <form method="POST" id="source-selector-form">
+                        {% csrf_token %}
+                        {% for source in data_sources %}
+                           
+                            <label class="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 cursor-pointer transition-all {% if not forloop.last %}border-b border-gray-100{% endif %}">
+                                <!-- Partie gauche -->
+                                <div class="flex items-center gap-3 w-full min-w-0">
+                                    <!-- Checkbox -->
+                                    <input type="checkbox" name="active_source" value="{{ source.id }}" class="accent-teal-600 h-4 w-4 shrink-0" {% if source.is_active == 1 %}checked{% endif %}>
+                                    <!-- Nom -->
+                                    <span class="text-xs font-semibold                                    text-gray-800 truncate min-w-0">
+                                    {{ source.name }}</span>
+                                    <!-- Type DB -->
+                                    <span class="text-[10px] px-2 py-0.5 font-bold bg-gray-100 text-gray-500 border border-gray-200 rounded uppercase tracking-wide whitespace-nowrap shrink-0">
+                                        {{ source.db_type }}
+                                    </span>
+                                    <!-- Statut -->
+                                     <div class="ml-auto flex items-center group relative">
+                                        {% if source.is_active %}
+                                            <span class="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.4)]"></span>
+                                            <div class="absolute right-0 top-6 hidden group-hover:block bg-gray-800 text-white text-[9px] px-2 py-1 rounded shadow-lg z-50">
+                                                Actif
+                                            </div>
+                                        {% elif source.status == "error" %}
+                                            <span class="h-2 w-2 rounded-full bg-red-500"></span>
+                                            <div class="absolute right-0 top-6 hidden group-hover:block bg-gray-800 text-white text-[9px] px-2 py-1 rounded shadow-lg z-50">
+                                                Erreur
+                                            </div>
+                                        {% else %}
+                                            <span class="h-2 w-2 rounded-full bg-gray-300"></span>
+                                            <div class="absolute right-0 top-6 hidden group-hover:block bg-gray-800 text-white text-[9px] px-2 py-1 rounded shadow-lg z-50">
+                                                Inactif
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    
+                                   
+                                </div>
+                            </label>
+                        {% empty %}
+                            <div class="p-6 text-center text-xs text-gray-400 italic">Aucune source de données configurée.</div>
+                        {% endfor %}
+                    </form>
+                </div>
+            </div>
+            <!-- Historique des messages utilisateur -->
+            <div class="bg-white rounded-xl shadow-lg p-4 flex-1 flex flex-col overflow-hidden">
+                <!-- Header -->
+                <div class="flex items-center justify-between mb-3 flex-shrink-0">
+                    <h3 class="text-lg font-bold text-gray-800">Historique</h3>
+                    <form method="POST"
+                          action="{% url 'clear_messages' %}"
+                          onsubmit="return confirm('Tu veux vraiment tout supprimer ? Cette action est irréversible.')">
+                        {% csrf_token %}
+                        <button type="submit"
+                                class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md transition">
+                            Supprimer tout
+                        </button>
+                    </form>
+                </div>
+                <!-- Liste -->
+                <div id="history-list" class="space-y-2 overflow-y-auto flex-1">
+                    {% if user_messages %}
+                        {% for msg in user_messages %}
+                            <div class="p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:shadow-md cursor-pointer transition-all border border-green-200">
+                                <div class="flex justify-between items-start mb-1">
+                                    <span class="text-xs font-semibold text-green-700">Vous</span>
+                                    <span class="text-xs text-gray-500">{{ msg.timestamp|date:"d/m H:i" }}</span>
+                                </div>
+                                <p class="text-sm text-gray-700 overflow-hidden"
+                                   style="display: -webkit-box;
+                                          -webkit-line-clamp: 2;
+                                          -webkit-box-orient: vertical">{{ msg.content }}</p>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center text-gray-400 text-sm py-8">
+                            <svg class="w-12 h-12 mx-auto mb-2 text-gray-300"
+                                 fill="none"
+                                 stroke="currentColor"
+                                 viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                            </svg>
+                            <p>Aucun message</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+document.addEventListener('DOMContentLoaded', () => {
+
+    const form = document.getElementById('chat-form');
+    const messageInput = document.getElementById('message');
+    const chatBox = document.getElementById('chat-box');
+    const loading = document.getElementById('loading');
+
+    if (!form || !messageInput || !chatBox) return;
+
+    /* -----------------------------
+       UTILITAIRES
+    ------------------------------*/
+
+    const getTime = () => {
+        const now = new Date();
+        return now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+    };
+
+    const scrollToBottom = () => {
+        chatBox.scrollTo({
+            top: chatBox.scrollHeight,
+            behavior: "smooth"
+        });
+    };
+
+
+
+
+    /* -----------------------------
+       DATE ACTUELLE
+    ------------------------------*/
+
+    const dateElement = document.getElementById('current-date');
+    if (dateElement) {
+        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        dateElement.textContent = new Date().toLocaleDateString('fr-FR', options);
+    }
+    
+
+    /* -----------------------------
+       SUBMIT
+    ------------------------------*/
+
+
+        const createMessageBubble = (text, sender = "system") => {
+        const wrapper = document.createElement('div');
+        wrapper.className = sender === "user"
+            ? 'flex flex-col items-end'
+            : 'flex flex-col items-start';
+
+        const bubble = document.createElement('div');
+        bubble.className = sender === "user"
+            ? 'bg-green-200 text-gray-800 px-4 py-2 rounded-2xl max-w-[70%]'
+            : 'bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl max-w-[70%]';
+
+        bubble.textContent = text;
+
+        const time = document.createElement('div');
+        time.className = 'text-gray-400 text-xs mt-1';
+        time.textContent = getTime();
+
+        wrapper.appendChild(bubble);
+        wrapper.appendChild(time);
+
+        chatBox.appendChild(wrapper);
+        scrollToBottom();
+    };
+
+    const createTable = (data) => {
+    if (!data || !data.length) {
+        createMessageBubble("Aucun résultat trouvé.");
+        return;
+    }
+
+    const wrapper = document.createElement("div");
+    //wrapper.className = "overflow-x-auto max-w-full my-2 p-2 bg-white rounded-lg shadow-sm border border-gray-200";
+    wrapper.className = "overflow-auto max-w-full max-h-80 my-2 p-2 bg-white rounded-lg shadow-sm border border-gray-200";
+
+    const table = document.createElement("table");
+    //table.className = "table-auto border-collapse border border-gray-300 text-sm min-w-full";
+    table.className = "min-w-full border-separate border-spacing-0";
+
+    // Header
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
+
+    Object.keys(data[0]).forEach(col => {
+        const th = document.createElement("th");
+        th.className = "border px-3 py-2 bg-indigo-100 text-indigo-700 font-semibold text-left";
+        th.textContent = col;
+        headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    // Body
+    const tbody = document.createElement("tbody");
+    data.forEach((row, i) => {
+        const tr = document.createElement("tr");
+        tr.className = i % 2 === 0 ? "bg-gray-50" : "bg-white"; // Lignes alternées
+
+        Object.values(row).forEach(value => {
+            const td = document.createElement("td");
+            td.className = "border px-3 py-2 text-gray-800";
+            td.textContent = value;
+            tr.appendChild(td);
+        });
+
+        tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+
+    wrapper.appendChild(table);
+    chatBox.appendChild(wrapper);
+    scrollToBottom();
+};
+
+    form.addEventListener('submit', function(e){
+        e.preventDefault();
+
+        const msg = messageInput.value.trim();
+        if (!msg) return;
+
+        createMessageBubble(msg, "user");
+        messageInput.value = "";
+
+        loading.classList.remove('hidden');
+
+        fetch("{% url 'get_response' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': '{{ csrf_token }}'
+            },
+            body: new URLSearchParams({message: msg})
+        })
+        //.then(response => response.json())
+        .then(response => {
+                if (!response.ok) {
+                    throw new Error("Erreur serveur");
+                }
+                return response.json();
+            })
+        .then(data => {
+
+            loading.classList.add('hidden');
+
+            if (data.type === "sql") {
+                createTable(data.data);
+            }
+            else if (data.type === "chat") {
+                createMessageBubble(data.data, "system");
+            }
+            else if (data.type === "error") {
+                createMessageBubble("⚠ " + data.data, "system");
+            }
+            else {
+                createMessageBubble("Réponse inattendue.");
+            }
+        })
+        .catch(err => {
+            loading.classList.add('hidden');
+            createMessageBubble("Erreur de communication serveur.");
+            console.error(err);
+        });
+    });
+});
+    </script>
+    {% comment %} <script>
+// Afficher la date actuelle avec vérification de sécurité
+function updateDate() {
+    const dateElement = document.getElementById('current-date');
+    
+    // Si l'élément n'existe pas dans le HTML, on arrête la fonction sans faire d'erreur
+    if (!dateElement) return; 
+
+    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const today = new Date().toLocaleDateString('fr-FR', options);
+    dateElement.textContent = today;
+}
+
+// On attend que le DOM soit chargé pour exécuter les fonctions
+document.addEventListener('DOMContentLoaded', function() {
+    updateDate();
+    });
+
+const form = document.getElementById('chat-form');
+const messageInput = document.getElementById('message');
+const chatBox = document.getElementById('chat-box');
+const loading = document.getElementById('loading');
+
+function scrollToBottom() {
+    chatBox.scrollTo({
+        top: chatBox.scrollHeight,
+        behavior: "smooth"
+    });
+}
+
+form.addEventListener('submit', function(e){
+    e.preventDefault();
+    const msg = messageInput.value.trim();
+    if (!msg) return;
+
+    // Ajouter message utilisateur
+    const userWrapper = document.createElement('div');
+    userWrapper.className = 'flex flex-col items-end mb-2';
+    const userMsg = document.createElement('div');
+    userMsg.className = 'bg-green-200 text-gray-800 px-4 py-2 rounded-2xl max-w-[70%]';
+    userMsg.textContent = msg;
+    const userTime = document.createElement('div');
+    userTime.className = 'text-gray-400 text-xs mt-1';
+    const now = new Date();
+    userTime.textContent = now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
+    userWrapper.appendChild(userMsg);
+    userWrapper.appendChild(userTime);
+    chatBox.appendChild(userWrapper);
+
+    scrollToBottom();
+    messageInput.value = '';
+
+    // Loading
+    loading.classList.remove('hidden');
+
+    fetch("{% url 'get_response' %}", {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: new URLSearchParams({message: msg})
+    })
+    .then(response => response.json())
+    .then(data => {
+        loading.classList.add('hidden');
+
+        const sysWrapper = document.createElement('div');
+        sysWrapper.className = 'flex flex-col items-start mb-2';
+        const sysMsg = document.createElement('div');
+        sysMsg.className = 'bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl max-w-[70%]';
+        sysMsg.textContent = data.reply || 'Erreur';
+        const sysTime = document.createElement('div');
+        sysTime.className = 'text-gray-400 text-xs mt-1';
+        const nowSys = new Date();
+        sysTime.textContent = nowSys.getHours() + ':' + String(nowSys.getMinutes()).padStart(2, '0');
+
+        sysWrapper.appendChild(sysMsg);
+        sysWrapper.appendChild(sysTime);
+        chatBox.appendChild(sysWrapper);
+
+        scrollToBottom();
+    })
+    .catch(err => {
+        loading.classList.add('hidden');
+        alert("Erreur de communication avec le serveur.");
+        console.error(err);
+    });
+});
+    </script> {% endcomment %}
+{% endblock %}
+{% comment %} </body>
+</html> {% endcomment %}
