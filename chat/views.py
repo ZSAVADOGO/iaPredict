@@ -390,6 +390,11 @@ def chat_view(request):
 
     # Récuperer tous les data sources
     data_sources = DbSource.objects.all()
+
+    # Récuperer tous les agents IA et celui actif
+    agents = Agent.objects.all()
+    active_agent = Agent.objects.filter(is_active=True).first()
+    data_sources = DbSource.objects.all()
     
     # Récupérer uniquement les messages utilisateur pour l'historique (les plus récents d'abord)
     user_messages = Message_Ai.objects.filter(sender='user').order_by('-timestamp')
@@ -398,6 +403,7 @@ def chat_view(request):
         'messages': all_messages,  # Pour la zone de chat
         'user_messages': user_messages,  # Pour l'historique
         'data_sources': data_sources,  # Pour la gestion des sources
+        'agents_list': agents,  # Pour la gestion des agents IA
 
     }
     return render(request, 'chat/chat.html', context)

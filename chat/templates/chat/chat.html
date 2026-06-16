@@ -1,21 +1,20 @@
 {% extends 'chat/base.html' %}
 {% block content %}
+    <!-- Conteneur principal figé à 600px de haut sur ordinateur pour bloquer toute extension infinie -->
+    {% comment %} <div class="w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-4 items-stretch h-auto md:h-[600px] overflow-hidden"> {% endcomment %}
     <div class="w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-4">
-        <!-- Zone de chat principale - md:w-6/12 -->
+        <!-- ======================================================== -->
+        <!-- COLONNE 1 (À GAUCHE) : Zone de chat principale - md:w-6/12 -->
+        <!-- ======================================================== -->
         <div id="chat-container"
-             class="w-full md:w-6/12 bg-white rounded-xl shadow-lg flex flex-col h-[600px]">
-            <!-- Chat Box -->
+             class="w-full md:w-6/12 bg-white rounded-xl shadow-lg flex flex-col h-[600px] md:h-full overflow-hidden">
+            <!-- Chat Box : Scrolle en interne si les messages dépassent -->
             <div id="chat-box" class="flex-1 p-4 overflow-y-auto space-y-4">
                 {% for msg in messages %}
                     <div class="flex flex-col {% if msg.sender == 'user' %}items-end{% else %}items-start{% endif %} mb-2">
-                        {% comment %} <div class=" {% if msg.sender == 'user' %} bg-green-200 {% else %} bg-gray-100 {% endif %} text-gray-800 px-4 py-2 rounded-2xl max-w-[70%] ">
-        {{ msg.content }}
-                        </div> {% endcomment %}
-                        <div class=" {% if msg.sender == 'user' %} bg-green-200 {% else %} bg-gray-100 {% endif %} text-gray-800 px-4 py-2 rounded-2xl max-w-[70%] msg-container ">
+                        <div class="{% if msg.sender == 'user' %} bg-green-200 {% else %} bg-gray-100 {% endif %} text-gray-800 px-4 py-2 rounded-2xl max-w-[70%] msg-container ">
                             {% if msg.content|length > 200 %}
-                                <!-- Version Courte -->
                                 <span class="short-text whitespace-pre-wrap">{{ msg.content|truncatechars:200 }}</span>
-                                <!-- Version Longue (Cachée par défaut) -->
                                 <span class="full-text hidden whitespace-pre-wrap">{{ msg.content }}</span>
                                 <button onclick="toggleMessage(this)"
                                         class="text-blue-600 hover:text-blue-800 text-xs font-semibold mt-1 block focus:outline-none">
@@ -30,12 +29,15 @@
                 {% endfor %}
             </div>
             <!-- Loading -->
-            <div id="loading" class="hidden text-gray-500 italic px-4 py-2 bg-gray-50">Système est en train de répondre...</div>
-            <!-- Formulaire - Toujours visible (sticky au bas du container) -->
-            <div class="mt-auto">
+            <div id="loading"
+                 class="hidden text-gray-500 italic px-4 py-2 bg-gray-50 flex-shrink-0">
+                Système est en train de répondre...
+            </div>
+            <!-- Formulaire -->
+            <div class="mt-auto flex-shrink-0">
                 <form id="chat-form"
                       method="POST"
-                      class="flex border-t border-gray-300 bg-white">
+                      class="flex border-t border-gray-300 bg-white rounded-b-xl overflow-hidden">
                     {% csrf_token %}
                     <input type="text"
                            id="message"
@@ -43,112 +45,134 @@
                            autocomplete="off"
                            class="flex-1 p-3 outline-none text-gray-700 focus:ring-2 focus:ring-teal-500">
                     <button type="submit"
-                            class="bg-teal-600 text-white px-6 font-bold hover:bg-teal-700 transition-colors">
+                            class="bg-teal-600 text-white px-6 font-bold hover:bg-teal-700 transition-colors flex-shrink-0">
                         Envoyer
                     </button>
                 </form>
             </div>
         </div>
-        <!-- Barre latérale droite - md:w-3/12 -->
-        <div class="w-full md:w-3/12 flex flex-col gap-4 h-[600px]">
-            <div class="bg-white rounded-xl shadow-lg p-4">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-lg font-bold text-gray-800">Sources SQL</h3>
-                    <a href="{% url 'add_source' %}"
-                       class="text-xs bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-md">+ Ajouter</a>
-                </div>
-                <div class="max-h-64 overflow-y-auto border border-gray-200 rounded-lg bg-white shadow-sm custom-scrollbar">
-                    <form method="POST" id="source-selector-form">
-                        {% csrf_token %}
-                        {% for source in data_sources %}
-                            <label class="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 cursor-pointer transition-all {% if not forloop.last %}border-b border-gray-100{% endif %}">
-                                <!-- Partie gauche -->
-                                <div class="flex items-center gap-3 w-full min-w-0">
-                                    <!-- Checkbox -->
-                                    <input type="checkbox"
-                                           name="active_source"
-                                           value="{{ source.id }}"
-                                           class="accent-teal-600 h-4 w-4 shrink-0"
-                                           {% if source.is_active == 1 %}checked{% endif %}>
-                                    <!-- Nom -->
-                                    <span class="text-xs font-semibold text-gray-800 truncate min-w-0">{{ source.name }}</span>
-                                    <!-- Type DB -->
-                                    <span class="text-[10px] px-2 py-0.5 font-bold bg-gray-100 text-gray-500 border border-gray-200 rounded uppercase tracking-wide whitespace-nowrap shrink-0">
-                                        {{ source.db_type }}
-                                    </span>
-                                    <!-- Statut -->
-                                    <div class="ml-auto flex items-center group relative">
-                                        {% if source.is_active %}
-                                            <span class="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.4)]"></span>
-                                            <div class="absolute right-0 top-6 hidden group-hover:block bg-gray-800 text-white text-[9px] px-2 py-1 rounded shadow-lg z-50">
-                                                Actif
-                                            </div>
-                                        {% elif source.status == "error" %}
-                                            <span class="h-2 w-2 rounded-full bg-red-500"></span>
-                                            <div class="absolute right-0 top-6 hidden group-hover:block bg-gray-800 text-white text-[9px] px-2 py-1 rounded shadow-lg z-50">
-                                                Erreur
-                                            </div>
-                                        {% else %}
-                                            <span class="h-2 w-2 rounded-full bg-gray-300"></span>
-                                            <div class="absolute right-0 top-6 hidden group-hover:block bg-gray-800 text-white text-[9px] px-2 py-1 rounded shadow-lg z-50">
-                                                Inactif
-                                            </div>
-                                        {% endif %}
+        <!-- ======================================================== -->
+        <!-- COLONNE 2 (AU MILIEU) : Configuration (Sources + Agents) - md:w-3/12 -->
+        <!-- ======================================================== -->
+        <div class="w-full md:w-3/12 flex flex-col gap-4 h-[600px] md:h-full overflow-hidden">
+            <!-- SECTION A : Sources SQL (Exactement la moitié moins la marge) -->
+                <div class="bg-white rounded-xl shadow-lg p-4">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-sm text-center font-bold text-gray-800">Sources SQL</h3>
+                      
+                    </div>
+                    {% comment %} <div class="flex-1 overflow-y-auto border border-gray-100 rounded-lg bg-white shadow-sm custom-scrollbar p-1"> {% endcomment %}
+                    <div class="max-h-64 overflow-y-auto border border-gray-200 rounded-lg bg-white shadow-sm custom-scrollbar">
+                        <form method="POST" id="source-selector-form">
+                            {% csrf_token %}
+                            {% for source in data_sources %}
+                                {% comment %} <label class="flex items-center justify-between px-2.5 py-1.5 hover:bg-gray-50 cursor-pointer transition-all border rounded-lg border-gray-100"> {% endcomment %}
+                                <label class="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 cursor-pointer transition-all {% if not forloop.last %}border-b border-gray-100{% endif %}">
+                                    <div class="flex items-center gap-2 w-full min-w-0">
+                                        <input type="checkbox"
+                                               name="active_source"
+                                               value="{{ source.id }}"
+                                               class="accent-teal-600 h-3.5 w-3.5 shrink-0"
+                                               {% if source.is_active == 1 %}checked{% endif %}>
+                                        <span class="text-xs font-semibold text-gray-700 truncate flex-1">{{ source.name }}</span>
+                                        <span class="text-[9px] px-1 py-0.5 font-bold bg-gray-100 text-gray-500 border border-gray-200 rounded uppercase tracking-wide shrink-0">{{ source.db_type }}</span>
+                                        <div class="flex items-center shrink-0 ml-0.5 relative group">
+                                            {% if source.is_active %}
+                                                <span class="h-2 w-2 rounded-full bg-green-500 shadow-[0_0_5px_rgba(34,197,94,0.4)]"></span>
+                                            {% elif source.status == "error" %}
+                                                <span class="h-2 w-2 rounded-full bg-red-500"></span>
+                                            {% else %}
+                                                <span class="h-2 w-2 rounded-full bg-gray-300"></span>
+                                            {% endif %}
+                                        </div>
                                     </div>
-                                </div>
-                            </label>
-                        {% empty %}
-                            <div class="p-6 text-center text-xs text-gray-400 italic">Aucune source de données configurée.</div>
-                        {% endfor %}
-                    </form>
+                                </label>
+                            {% empty %}
+                                <div class="p-4 text-center text-xs text-gray-400 italic">Aucune source de données.</div>
+                            {% endfor %}
+                        </form>
+                    </div>
                 </div>
-            </div>
-            <!-- Historique des messages utilisateur -->
-            <div class="bg-white rounded-xl shadow-lg p-4 flex-1 flex flex-col overflow-hidden">
-                <!-- Header -->
-                <div class="flex items-center justify-between mb-3 flex-shrink-0">
-                    <h3 class="text-lg font-bold text-gray-800">Historique</h3>
-                    <form method="POST"
-                          action="{% url 'clear_messages' %}"
-                          onsubmit="return confirm('Tu veux vraiment tout supprimer ? Cette action est irréversible.')">
-                        {% csrf_token %}
-                        <button type="submit"
-                                class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md transition">
-                            Supprimer tout
-                        </button>
-                    </form>
-                </div>
-                <!-- Liste -->
-                <div id="history-list" class="space-y-2 overflow-y-auto flex-1">
-                    {% if user_messages %}
-                        {% for msg in user_messages %}
-                            <div class="p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:shadow-md cursor-pointer transition-all border border-green-200">
-                                <div class="flex justify-between items-start mb-1">
-                                    <span class="text-xs font-semibold text-green-700">Vous</span>
-                                    <span class="text-xs text-gray-500">{{ msg.timestamp|date:"d/m H:i" }}</span>
-                                </div>
-                                <p class="text-sm text-gray-700 overflow-hidden"
-                                   style="display: -webkit-box;
-                                          -webkit-line-clamp: 2;
-                                          -webkit-box-orient: vertical">{{ msg.content }}</p>
-                            </div>
-                        {% endfor %}
-                    {% else %}
-                        <div class="text-center text-gray-400 text-sm py-8">
-                            <svg class="w-12 h-12 mx-auto mb-2 text-gray-300"
-                                 fill="none"
-                                 stroke="currentColor"
-                                 viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                            </svg>
-                            <p>Aucun message</p>
+                <!-- SECTION B : Vos Agents IA Llms (Exactement la moitié moins la marge) -->
+                <div class="bg-white rounded-xl shadow-lg p-4 flex flex-col h-[292px] md:h-[calc(50%-0.5rem)] overflow-hidden">
+                    <div class="flex justify-between items-center mb-2 flex-shrink-0">
+                        <div class="min-w-0 flex-1 pr-1">
+                            <h3 class="text-sm font-bold text-gray-800 truncate">🤖 Vos Agents IA</h3>
                         </div>
-                    {% endif %}
+                      
+                    </div>
+                    <div class="flex-1 overflow-y-auto border border-gray-100 rounded-lg bg-white shadow-sm custom-scrollbar p-1">
+                        <div class="space-y-1.5">
+                            {% for agent in agents_list %}
+                                    <label class="flex items-center justify-between px-4 py-2.5 hover:bg-gray-50 cursor-pointer transition-all {% if not forloop.last %}border-b border-gray-100{% endif %}">
+                                        <div class="flex items-center gap-2 w-full min-w-0">
+                                            <div class="flex items-center gap-1.5 min-w-0 flex-1">
+                                                <input type="radio"
+                                                       name="active_agent_display"
+                                                       {% if agent.is_active %}checked{% endif %}
+                                                       
+                                                       class="accent-teal-600 h-3.5 w-3.5 shrink-0"
+                                                       >
+                                                <span class="text-xs font-semibold text-gray-700 truncate flex-1">{{ agent.name }}</span>
+                                            </div>
+                                            <span class="text-[9px] px-1 py-0.5 font-bold bg-gray-100 text-gray-500 border border-gray-200 rounded uppercase tracking-wide shrink-0">{{ agent.model_name }}</span>
+                                        </div>
+                                    </label>
+                                {% empty %}
+                                    <div class="p-4 text-center text-xs text-gray-400 italic">Aucun agent configuré.</div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- ======================================================== -->
+                <!-- COLONNE 3 (À DROITE) : Historique des messages - md:w-3/12 -->
+                <!-- ======================================================== -->
+                <div class="w-full md:w-3/12 bg-white rounded-xl shadow-lg p-4 flex flex-col h-[600px] md:h-full overflow-hidden">
+                    <div class="flex items-center justify-between mb-3 flex-shrink-0">
+                        <h3 class="text-lg font-bold text-gray-800">Historique</h3>
+                        <form method="POST"
+                              action="{% url 'clear_messages' %}"
+                              onsubmit="return confirm('Tu veux vraiment tout supprimer ? Cette action est irréversible.')"
+                              class="flex-shrink-0">
+                            {% csrf_token %}
+                            <button type="submit"
+                                    class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md transition shadow-sm">
+                                Supprimer tout
+                            </button>
+                        </form>
+                    </div>
+                    <!-- Zone de liste de l'historique défilable interne -->
+                    {% comment %} Fin de la liste d'historique. {% endcomment %}
+                    <div id="history-list" class="space-y-2 overflow-y-auto flex-1">
+                        {% if user_messages %}
+                            {% for msg in user_messages %}
+                                <div class="p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:shadow-md cursor-pointer transition-all border border-green-200">
+                                    <div class="flex justify-between items-start mb-1">
+                                        <span class="text-xs font-semibold text-green-700">Vous</span>
+                                        <span class="text-xs text-gray-500">{{ msg.timestamp|date:"d/m H:i" }}</span>
+                                    </div>
+                                    <p class="text-sm text-gray-700 overflow-hidden"
+                                       style="display: -webkit-box;
+                                              -webkit-line-clamp: 2;
+                                              -webkit-box-orient: vertical">{{ msg.content }}</p>
+                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center text-gray-400 text-sm py-8">
+                                <svg class="w-12 h-12 mx-auto mb-2 text-gray-300"
+                                     fill="none"
+                                     stroke="currentColor"
+                                     viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                                </svg>
+                                <p>Aucun message</p>
+                            </div>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
-    <script>
+            <script>
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('chat-form');
     const messageInput = document.getElementById('message');
@@ -173,8 +197,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
-
-
     /* -----------------------------
        DATE ACTUELLE
     ------------------------------*/
@@ -184,13 +206,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         dateElement.textContent = new Date().toLocaleDateString('fr-FR', options);
     }
-    
 
     /* -----------------------------
        SUBMIT
     ------------------------------*/
-
-
         const createMessageBubble = (text, sender = "system") => {
         const wrapper = document.createElement('div');
         wrapper.className = sender === "user"
@@ -354,56 +373,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Bon mais veut optimiser
-    /*form.addEventListener('submit', function(e){
-        e.preventDefault();
-
-        const msg = messageInput.value.trim();
-        if (!msg) return;
-
-        createMessageBubble(msg, "user");
-        messageInput.value = "";
-
-        loading.classList.remove('hidden');
-
-        fetch("{% url 'get_response' %}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: new URLSearchParams({message: msg})
-        })
-        //.then(response => response.json())
-        .then(response => {
-                if (!response.ok) {
-                    throw new Error("Erreur serveur");
-                }
-                return response.json();
-            })
-        .then(data => {
-
-            loading.classList.add('hidden');
-
-            if (data.type === "sql") {
-                createTable(data.data);
-            }
-            else if (data.type === "chat") {
-                createMessageBubble(data.data, "system");
-            }
-            else if (data.type === "error") {
-                createMessageBubble("⚠ " + data.data, "system");
-            }
-            else {
-                createMessageBubble("Réponse inattendue.");
-            }
-        })
-        .catch(err => {
-            loading.classList.add('hidden');
-            createMessageBubble("Erreur de communication serveur.");
-            console.error(err);
-        });
-    });*/
+    
 });
 
 {% comment %} POUR le petit bouton voir plus {% endcomment %}
@@ -451,5 +421,5 @@ function toggleMessage(button) {
         }
     });
 
-    </script>
-{% endblock %}
+            </script>
+        {% endblock %}

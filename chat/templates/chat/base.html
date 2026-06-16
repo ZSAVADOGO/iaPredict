@@ -36,7 +36,7 @@
                 {% block content %}
                 {% endblock %}
 
-                {% if messages %}
+                {% comment %} {% if messages %}
                 {% for message in messages %}
                     <script>
                         document.addEventListener("DOMContentLoaded", function () {
@@ -50,7 +50,7 @@
                         });
                     </script>
                 {% endfor %}
-            {% endif %}
+            {% endif %} {% endcomment %}
             </div>
         </main>
         <!-- SWEET ALERT -->
