@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -30,8 +31,15 @@ ALLOWED_HOSTS = []
 TAILWIND_APP_NAME = 'theme'
 NPM_BIN_PATH = r"C:/Program Files/nodejs/npm.cmd"
 
-# Application definition
+#Les fichiers statics
+STATIC_URL = '/static/'
 
+# Ajoutez cette ligne essentielle :
+STATICFILES_DIRS = [
+    BASE_DIR / "static"
+]
+
+# Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',

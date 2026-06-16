@@ -5,14 +5,17 @@
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>
-            {% block title %} Mining Text {% endblock %}
+            {% block title %} Ia Predict {% endblock %}
         </title>
         {% tailwind_css %}
+         <!-- SWEET ALERT CSS -->
+    <link rel="stylesheet"
+          href="{% static 'css/sweetalert2.min.css' %}">
     </head>
     <body class="bg-gray-100 min-h-screen flex flex-col">
         <!-- Barre de navigation (Fixée en haut) -->
         <nav class="flex justify-center gap-6 p-4 bg-white shadow-sm w-full">
-            <a href="{% url 'index' %}"
+            <a href="{% url 'chat' %}"
                class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm font-medium">
                 Accueil
             </a>
@@ -21,8 +24,8 @@
                 Parametres
             </a>
 
-             <a href="{% url 'agent_ia' %}"
-               class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium cursor-pointer">
+            <a href="{% url 'agent_ia' %}"
+            class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium cursor-pointer">
                 Agents IA
             </a>
         </nav>
@@ -32,7 +35,29 @@
                 <!-- Optionnel : limite la largeur du contenu -->
                 {% block content %}
                 {% endblock %}
+
+                {% if messages %}
+                {% for message in messages %}
+                    <script>
+                        document.addEventListener("DOMContentLoaded", function () {
+                            Swal.fire({
+                                icon: '{{ message.tags }}',
+                                title: '{{ message.tags|title }}',
+                                text: '{{ message }}',
+                                timer: 2500,
+                                showConfirmButton: true,
+                            });
+                        });
+                    </script>
+                {% endfor %}
+            {% endif %}
             </div>
         </main>
+        <!-- SWEET ALERT -->
+    <script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
+
+    <!-- ALERTS CENTRALISEES -->
+    <script src="{% static 'js/alerts.js' %}"></script>
+
     </body>
 </html>

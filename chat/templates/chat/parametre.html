@@ -1,18 +1,23 @@
 {% extends 'chat/base.html' %}
 {% block content %}
-    <div class="w-full md:w-3/12 flex flex-col gap-4 h-[600px]">
-        <div class="bg-white rounded-xl shadow-lg p-4">
+    <div class="container mx-auto flex flex-row gap-4">
+        {% comment %} <div class="flex flex-row gap-4 w-full h-[600px] items-start"> {% endcomment %}
+        <!-- Premier bloc (Largeur : 3/12 soit 25%) -->
+        <div class="w-max bg-white rounded-xl shadow-lg p-4">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-bold text-gray-800">Sources SQL</h3>
+                {% comment %} <a href="{% url 'add_source' %}" class="text-xs bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-md">+ Ajouter</a> {% endcomment %}
+                <!-- Exemple bouton ajouter -->
                 <a href="{% url 'add_source' %}"
-                   class="text-xs bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-md">+ Ajouter</a>
+                   class="source-modal-trigger text-xs bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-md">
+                    + Nouveau
+                </a>
+            
             </div>
-            {% comment %} href="{% url 'activ_source' source.id %}" {% endcomment %}
-            {% comment %} <form action="{% url 'select_source' %}"  method="POST"> {% endcomment %}
             <form method="POST" action="{% url 'activ_source' %}" id="activateForm">
                 {% csrf_token %}
-                {% comment %} <div class="space-y-3"> {% endcomment %}
-                <div class="max-h-[400px] overflow-y-auto space-y-2 p-1 pr-2 border rounded-lg border-gray-100">
+                {% comment %} <div class="max-h-[400px] overflow-y-auto space-y-2 p-1 pr-2 border rounded-lg border-gray-100"> {% endcomment %}
+                <div class="overflow-y-auto space-y-2 p-1 pr-2 border rounded-lg border-gray-100">
                     {% for source in data_sources %}
                         <!-- Conteneur avec padding réduit (p-2) et hauteur minimale -->
                         <div data-id="{{ source.id }}"
@@ -40,20 +45,8 @@
                                         {{ source.get_status_display }}
                                     </span>
                                 </div>
-                                {% comment %}  <div class="flex items-center">
-                {% if source.status == "connected" %}
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 uppercase tracking-tighter">
-                            connecté
-                        </span>
-
-                {% elif source.status == "error" %}
-                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 uppercase tracking-tighter">
-                            erreur
-                        </span>
-                {% endif %}
-                                </div> {% endcomment %}
                             </div>
-                            <div class="flex justify-start items-center gap-2 mt-1.5 pt-1.5 border-t border-gray-100 ml-5">
+                            <div class="flex justify-start items-center gap-1 mt-1.5 pt-1.5 border-t border-gray-100">
                                 <!-- Bouton Tester -->
                                 <a href="{% url 'test_connect_bdd' source.id %}"
                                    class="text-[10px] px-2 py-0.5 font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors shadow-sm">
@@ -82,8 +75,7 @@
                     {% endfor %}
                 </div>
                 <!-- Zone des Messages Django -->
-                <div id="django-messages"
-                     class="fixed top-5 right-5 z-50 flex flex-col gap-3 w-72">
+                {% comment %} <div id="django-messages" class="fixed top-5 right-5 z-50 flex flex-col gap-3 w-72">
                     {% if messages %}
                         {% for message in messages %}
                             <div class="p-3 rounded-lg border shadow-lg flex items-center justify-between transition-all duration-500 transform translate-x-0 {% if message.tags == 'error' %} bg-red-50 border-red-200 text-red-700 {% elif message.tags == 'success' %} bg-green-50 border-green-200 text-green-700 {% else %} bg-blue-50 border-blue-200 text-blue-700 {% endif %}">
@@ -97,8 +89,7 @@
                                     <span class="text-xs font-semibold">{{ message }}</span>
                                 </div>
                                 <!-- Bouton fermer manuel -->
-                                <button onclick="this.parentElement.remove()"
-                                        class="text-current opacity-50 hover:opacity-100">
+                                <button onclick="this.parentElement.remove()" class="text-current opacity-50 hover:opacity-100">
                                     <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                     </svg>
@@ -106,16 +97,368 @@
                             </div>
                         {% endfor %}
                     {% endif %}
-                </div>
+                </div> {% endcomment %}
                 <button type="submit"
                         class="mt-4 text-xs bg-indigo-600 text-white px-3 py-1 rounded-md">
                     Activer la source sélectionnée
                 </button>
-                
             </form>
         </div>
+        <div class="bg-white rounded-xl shadow-lg p-4">
+            <!-- En-tête avec statut dynamique -->
+            <div class="flex justify-between items-center mb-4">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-800">🤖 Vos Agents IA Llms</h3>
+                    {% comment %} <p class="text-xs text-gray-500 mt-0.5">
+                Statut : 
+                {% if active_agent %}
+                    <span class="text-green-600 font-bold">● {{ active_agent.name }} est sélectionné</span>
+                {% else %}
+                    <span class="text-red-500 font-bold">⚠️ Aucun agent actif (Secours par défaut)</span>
+                {% endif %}
+                    </p> {% endcomment %}
+                    <p class="text-xs font-bold text-red-600 animate-pulse">
+                        <span>Statut :</span>
+                        {% if active_agent %}
+                            <!-- Badge de l'agent actif bien visible -->
+                            <span class="text-gray-500">
+                                {{ active_agent.name }} est sélectionné
+                            </span>
+                        {% else %}
+                            <!-- Alerte visuelle douce mais impactante si aucun agent n'est sélectionné -->
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-red-50 text-red-700 text-xs font-bold border border-red-200 animate-bounce">
+                                ⚠️ Aucun agent actif (Secours par défaut)
+                            </span>
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button"
+                            id="openModalBtn"
+                            class="text-xs bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-md transition shadow-sm">
+                        + Nouveau
+                    </button>
+                </div>
+            </div>
+            <!-- Formulaire d'activation manuel -->
+            <form method="POST"
+                  action="{% url 'toggle_agent' 0 %}"
+                  id="activateAgentForm">
+                {% csrf_token %}
+                <div class="overflow-y-auto space-y-2 p-1 pr-2 border rounded-lg border-gray-100 max-h-[350px]">
+                    {% for agent in agents %}
+                        <!-- Conteneur compact (p-2) -->
+                        <div data-id="{{ agent.id }}"
+                             class="p-2 {% if agent.is_active %}bg-green-50/70 border-green-300{% else %}bg-gray-50 border-gray-200{% endif %} rounded-md flex flex-col gap-1 border transition-all">
+                            <div class="flex justify-between items-center w-full">
+                                <div class="flex items-center gap-2 min-w-0 flex-1">
+                                    <!-- Radio purement indicatif et désactivé (clic bloqué) -->
+                                    <input type="radio"
+                                           name="active_agent_display"
+                                           value="{{ agent.id }}"
+                                           {% if agent.is_active %}checked{% endif %}
+                                           disabled
+                                           class="accent-teal-600 h-3.5 w-3.5 opacity-80 shrink-0 pointer-events-none">
+                                    <!-- Conteneur Nom + Modèle -->
+                                    <div class="flex items-center gap-2 min-w-0 truncate">
+                                        <span class="text-xs font-semibold text-gray-700 truncate">{{ agent.name }}</span>
+                                        <span class="text-[10px] px-1.5 py-0.5 font-mono font-bold bg-gray-200 text-gray-700 rounded border border-gray-300 leading-none shrink-0">
+                                            {{ agent.model_name }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <!-- Statut visuel discret -->
+                                <div class="flex items-center shrink-0 ml-2">
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded font-medium {% if agent.is_active %} bg-green-100 text-green-700 {% else %} bg-gray-100 text-gray-500 {% endif %}">
+                                        {% if agent.is_active %}
+                                            Actif
+                                        {% else %}
+                                            Inactif
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                            <!-- Description rapide / Instructions -->
+                            <p class="text-[11px] text-gray-500 italic line-clamp-1 pl-5">
+                                "{{ agent.system_instruction|default:"Aucune instruction configurée." }}"
+                            </p>
+                            <!-- Barre d'actions épurée en bas -->
+                            <div class="flex justify-start items-center gap-1 mt-1 pt-1 border-t border-gray-100 pl-5">
+                                <!-- BOUTON ACTIVER : Visible uniquement si l'agent n'est pas déjà actif -->
+                                {% if not agent.is_active %}
+                                    <!-- Le bouton appelle directement la vue Django avec l'ID de l'agent -->
+                                    <a href="{% url 'active_agent_ai' agent.id %}"
+                                       class="text-[10px] px-2 py-0.5 font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors shadow-sm">
+                                        Activer
+                                    </a>
+                                {% endif %}
+                                <!-- Bouton Modifier -->
+                                <a href="{% url 'edit_agent' agent.id %}"
+                                   class="text-[10px] px-2 py-0.5 font-semibold text-gray-600 bg-white hover:bg-gray-50 border border-gray-300 rounded transition-colors shadow-sm">
+                                    Modif
+                                </a>
+                                <!-- Bouton Supprimer -->
+                                <a href="{% url 'delete_agent' agent.id %}"
+                                   onclick="return confirm('Supprimer cet agent ?')"
+                                   class="text-[10px] px-2 py-0.5 font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors shadow-sm">
+                                    Suppr
+                                </a>
+                            </div>
+                        </div>
+                        {% if messages %}
+                            <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            {% for message in messages %}
+                {% if message.tags == 'error' %}
+                    alertError("{{ message|escapejs }}");
+                {% else %}
+                    alertInfo("{{ message|escapejs }}");
+                {% endif %}
+            {% endfor %}
+        });
+                            </script>
+                        {% endif %}
+                    {% empty %}
+                        <div class="p-6 text-center text-xs text-gray-400 italic">Aucun agent configuré pour le moment.</div>
+                    {% endfor %}
+                </div>
+            </form>
+        </div>
+        {% comment %} <div class="bg-white rounded-xl shadow-lg p-4">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-gray-800">🤖 Vos Agents IA Llms</h3>
+                <button onclick="alertWarning('Bienvenue sur la plateforme')" class="text-xs bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-md">
+                    + Ajouter
+                </button>
+                <button type="button" id="openModalBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-xl text-sm transition shadow-sm">
+                    {% if agent %}
+                        Modifier l'Agent
+                    {% else %}
+                        Ajouter un Agent
+                    {% endif %}
+                </button>
+            </div>
+            <div class="overflow-y-auto space-y-2 p-1 pr-2 border rounded-lg border-gray-100">
+                {% for agent in agents %}
+                    <div class="border rounded-xl p-4 flex justify-between items-center {% if agent.is_active %}border-green-500 bg-green-50/50{% else %}border-gray-200{% endif %}">
+                        <div>
+                            <div class="flex justify-between items-center gap-2">
+                                <span class="text-xs font-semibold text-gray-700">{{ agent.name }}</span>
+                                {% if agent.is_active %}
+                                    <span class="bg-green-200 text-green-700 text-xs px-2 py-0.5 rounded-full font-medium">Actif</span>
+                                {% endif %}
+                            </div>
+                            <p class="text-xs text-gray-500">
+                                Modèle : <code class="bg-gray-100 px-1.5 py-0.5 rounded text-red-600">{{ agent.model_name }}</code>
+                            </p>
+                            <p class="text-xs text-gray-600">{{ agent.api_key }}</p>
+                            <p class="text-sm text-gray-600 mt-2 italic line-clamp-1">"{{ agent.system_instruction }}"</p>
+                            <div class="flex justify-start items-center gap-1 mt-1.5 pt-1.5 border-t border-gray-100">
+                                {% if not agent.is_active %}
+                                    <a href="{% url 'toggle_agent' agent.id %}" class="text-[10px] px-2 py-0.5 font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors shadow-sm">
+                                        Activer
+                                    </a>
+                                {% endif %}
+                                <a href="{% url 'edit_agent' agent.id %}" class="text-[10px] px-2 py-0.5 font-semibold text-gray-600 bg-white hover:bg-gray-50 border border-gray-300 rounded transition-colors shadow-sm">
+                                    Modif ✏️
+                                </a>
+                                <a type="button" href="{% url 'delete_agent' agent.id %}" onclick="return confirm('Supprimer cet agent ?')" class="text-[10px] px-2 py-0.5 font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors shadow-sm">
+                                    Suppr 🗑️
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <p class="text-gray-500 text-sm text-center py-4">Aucun agent configuré pour le moment.</p>
+                {% endfor %}
+            </div>
+        </div>  {% endcomment %}
+        {% comment %} ######################################################## {% endcomment %}
+        <!-- 2. Le Template invisible  (Chargement immédiat en RAM) -->
+        {% comment %} ######################################################## {% endcomment %}
+        <!-- 2. Le Template HTML instantané (Chargement immédiat en RAM) -->
+        <template id="dbSourceFormTemplate">
+            <form method="POST"
+                  id="dbSourceRealForm"
+                  action="{% url 'add_source' %}"
+                  class="w-full text-left space-y-5 font-sans block"
+                  style="display: block !important">
+                {% csrf_token %}
+                <!-- Champ Nom : Prend toute la largeur complète -->
+                <div class="w-full block mb-3">
+                    <label class="block text-xs font-semibold text-gray-700 mb-1">Nom de la source</label>
+                    <input type="text"
+                           name="name"
+                           id="modal_name"
+                           required
+                           class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+                           placeholder="Ex: Base Production">
+                </div>
+                <!-- 1. Db Type et Host horizontalement (Équivalent col-md-6) -->
+                <div class="w-full flex flex-row gap-4 mb-3"
+                     style="display: flex !important;
+                            flex-direction: row !important;
+                            justify-content: space-between !important">
+                    <!-- Bloc gauche : Équivalent col-md-4 (Prend 1 parts de l'espace) -->
+                    <div style="flex: 1 1 0% !important;">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Type de BDD</label>
+                        <select name="db_type"
+                                id="modal_db_type"
+                                class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none bg-white">
+                            <option value="mysql">MySQL</option>
+                            <option value="postgres">PostgreSQL</option>
+                        </select>
+                    </div>
+                    <!-- Bloc droite : Équivalent col-md-8 (Prend 2 parts de l'espace) -->
+                    <div style="flex: 2 1 0% !important;">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Hôte (Host)</label>
+                        <input type="text"
+                               name="host"
+                               id="modal_host"
+                               required
+                               class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+                               placeholder="localhost ou IP">
+                    </div>
+                </div>
+                <!-- 2. Nom Base de données et Port horizontalement (Équivalent col-md-6) -->
+                <div class="w-full flex flex-row gap-4 mb-3"
+                     style="display: flex !important;
+                            flex-direction: row !important;
+                            justify-content: space-between !important">
+                    <!-- Bloc Gauche : Équivalent col-md-8 (Prend 2 parts de l'espace) -->
+                    <div style="flex: 2 1 0% !important;">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Nom Base de données</label>
+                        <input type="text"
+                               name="database_name"
+                               id="modal_database_name"
+                               required
+                               class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+                               placeholder="Nom de la BDD">
+                    </div>
+                    <!-- Bloc Droite : Équivalent col-md-4 (Prend 1 part de l'espace) -->
+                    <div style="flex: 1 1 0% !important;">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Port</label>
+                        <input type="number"
+                               name="port"
+                               id="modal_port"
+                               required
+                               class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+                               placeholder="3306 ou 5432">
+                    </div>
+                </div>
+                <!-- 3. Identifiant et Mot de passe horizontalement (Équivalent col-md-6) -->
+                <div class="w-full flex flex-row gap-4 mb-3"
+                     style="display: flex !important;
+                            flex-direction: row !important;
+                            justify-content: space-between !important">
+                    <!-- Bloc Gauche (flex-1 gère la taille égale automatiquement) -->
+                    <div class="flex-1" style="flex: 1 1 0% !important;">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Identifiant</label>
+                        <input type="text"
+                               name="username"
+                               id="modal_username"
+                               required
+                               class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+                               placeholder="Utilisateur">
+                    </div>
+                    <div class="flex-1" style="flex: 1 1 0% !important;">
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Mot de passe</label>
+                        <input type="password"
+                               name="password"
+                               id="modal_password"
+                               class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+                               placeholder="••••••••">
+                    </div>
+                </div>
+                <!-- mt-6 fait descendre la div complète vers le bas -->
+                <div class="w-full flex flex-row justify-center gap-4 mb-3 mt-6">
+                    <!-- Bouton de validation -->
+                    <button type="submit"
+                            class="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 px-6 rounded-xl text-sm transition shadow-md tracking-wide">
+                        Enregistrer
+                    </button>
+                    <!-- Bouton d'annulation -->
+                    <button type="button"
+                            onclick="Swal.close()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-2.5 px-6 rounded-xl text-sm transition shadow-md tracking-wide">
+                        Annuler
+                    </button>
+                </div>
+            </form>
+        </template>
+        {% comment %} ######################################################## {% endcomment %}
+        <!-- 2. Le Template invisible contenant votre formulaire Django d'origine nettoyé -->
+        {% comment %} ######################################################## {% endcomment %}
+        <template id="agentFormTemplate">
+            <form method="POST"
+                  action="{% if agent %}{% url 'edit_agent' agent.id %}{% else %}{% url 'add_agent' %}{% endif %}"
+                  class="space-y-4 text-left">
+                {% csrf_token %}
+                <div class="text-left mb-3">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nom de l'agent</label>
+                    <input type="text"
+                           name="name"
+                           value="{{ agent.name|default:'' }}"
+                           required
+                           class="w-full text-gray-600 border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="text-left mb-3">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Modèle de langage</label>
+                    <input type="text"
+                           name="model_name"
+                           id="model_name"
+                           value="{{ agent.model_name|default:'' }}"
+                           required
+                           class="w-full text-gray-600 border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="text-left mb-3">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Api Key</label>
+                    <!-- Nettoyage des filtres de troncature pour éditer la clé réelle -->
+                    <textarea name="api_key"
+                              required
+                              rows="1"
+                              placeholder="Ex: AIzaSyB6A2hMS..."
+                              class="w-full text-gray-600 border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500">{{ agent.api_key|default:'' }}</textarea>
+                </div>
+                <div class="text-left mb-3">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Instructions Système (Prompt de base)</label>
+                    <textarea name="system_instruction"
+                              rows="2"
+                              placeholder="Ex: Tu es un assistant spécialisé..."
+                              class="text-gray-600 w-full border rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 resize-none">{{ agent.system_instruction|default:'' }}</textarea>
+                </div>
+                <div class="flex items-center gap-2 py-2 text-left">
+                    <input type="checkbox"
+                           name="is_active"
+                           id="is_active"
+                           {% if agent.is_active %}checked{% endif %}
+                           class="rounded text-blue-600 focus:ring-blue-500">
+                    <label for="is_active" class="text-sm font-medium text-gray-700">Définir comme agent par défaut</label>
+                </div>
+                {% comment %} <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-sm transition mt-2 shadow-md">
+                    Enregistrer l'Agent
+                </button> {% endcomment %}
+                <!-- mt-6 fait descendre la div complète vers le bas -->
+                <div class="w-full flex flex-row justify-center gap-4 mb-3 mt-6">
+                    <!-- Bouton de validation -->
+                    <button type="submit"
+                            class="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 px-6 rounded-xl text-sm transition shadow-md tracking-wide">
+                        Enregistrer
+                    </button>
+                    <!-- Bouton d'annulation -->
+                    <button type="button"
+                            onclick="Swal.close()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-2.5 px-6 rounded-xl text-sm transition shadow-md tracking-wide">
+                        Annuler
+                    </button>
+                </div>
+            </form>
+        </template>
     </div>
-    <script>
+</div>
+<script> 
+
+
         document.getElementById("activateForm").addEventListener("submit", function(e) {
     e.preventDefault();
 
@@ -166,68 +509,156 @@
     .catch(error => console.error("Erreur activation:", error));
 });
 
-    {% comment %} JavaScript pour gérer l'activation des sources {% endcomment %}
-{% comment %} 2 document.getElementById("activateForm").addEventListener("submit", function(e) {
-    e.preventDefault();
+// GERE LA MODIF DE DB SOURCE SANS RECHARGEMENT DE PAGE
+document.addEventListener("DOMContentLoaded", function() {
+    // Écouter le clic sur tous les boutons/liens avec la classe source-modal-trigger
+    document.body.addEventListener("click", function(e) {
+        const trigger = e.target.closest(".source-modal-trigger");
+        if (!trigger) return;
 
-    const form = this;
-    const formData = new FormData(form);
+        // Bloquer la redirection vers la nouvelle page
+        e.preventDefault();
+        
+        const targetUrl = trigger.getAttribute("href");
+        
+        // Afficher une modale de chargement temporaire
+        Swal.fire({
+            title: 'Chargement...',
+            allowOutsideClick: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
 
-    fetch(form.action, {
-        method: "POST",
-        headers: {
-            "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
-        },
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
+        # Charger le HTML du formulaire Django (add_source ou edit_source)
+        fetch(targetUrl, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(response => {
+            if (!response.ok) throw new Error("Erreur lors du chargement du formulaire");
+            return response.text();
+        })
+        .then(htmlContent => {
+            // Déterminer le titre selon l'URL
+            const isEdit = targetUrl.includes('edit');
+            const modalTitle = isEdit ? "Modifier la Source de Données" : "Ajouter une Source de Données";
 
-            // 🔄 Reset tous les badges
-            document.querySelectorAll("[data-status]").forEach(el => {
-                el.textContent = "";
+            // Ouvrir SweetAlert2 avec le formulaire Django complet et pré-rempli !
+            Swal.fire({
+                title: modalTitle,
+                html: htmlContent, // Injection directe du HTML envoyé par Django
+                showConfirmButton: false,
+                focusConfirm: false,
+                width: '560px',
+                background: '#ffffff',
+                padding: '1.5rem',
+                customClass: {
+                    popup: 'rounded-2xl shadow-2xl font-sans',
+                    title: 'text-lg font-semibold text-gray-800 border-b pb-3 mb-4 text-left'
+                },
+                allowOutsideClick: true
             });
+        })
+        .catch(error => {
+            console.error(error);
+            Swal.fire({
+                icon: 'error',
+                title: 'Erreur',
+                text: 'Impossible de charger le formulaire.'
+            });
+        });
+    });
+});
 
-            // 🎯 Mettre à jour la source activée
-            const activeRow = document.querySelector(`[data-id="${data.source_id}"]`);
-            if (activeRow) {
-                const badge = activeRow.querySelector("[data-status]");
-                badge.textContent = "connecté";
-                badge.className = "text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 uppercase";
+
+document.addEventListener('DOMContentLoaded', function() {
+
+      // ==========================================
+    // LOGIQUE 1 : Gestion du Modal de l'Agent
+    // ==========================================
+    const openBtn = document.getElementById('openModalBtn');
+    const template = document.getElementById('agentFormTemplate');
+
+    if (openBtn && template) {
+        openBtn.addEventListener('click', function() {
+            // Récupère le contenu HTML brut du template Django compilé
+            const formHtml = template.innerHTML;
+            
+            // Appel de la nouvelle fonction SweetAlert2 de alert.js
+            openAgentModal(formHtml);
+        });
+    }
+
+
+   // ==========================================
+    // LOGIQUE 2 : Gestion des Modals de Data Sources (DÉLÉGATION DE CLIC FIABLE)
+    // ==========================================
+     // Écouteur global pour intercepter les ajouts et modifications de sources
+    document.addEventListener('click', function(e) {
+        const trigger = e.target.closest('.source-modal-trigger');
+        
+        if (trigger) {
+            e.preventDefault(); // Bloque la redirection
+            const targetUrl = trigger.getAttribute('href');
+            
+            // Appel de la fonction en lui passant le bouton pour extraire les dataset si modif
+            openSourceModal(targetUrl, trigger);
+        }
+    });
+    /*document.addEventListener('click', function(e) {
+        const trigger = e.target.closest('.source-modal-trigger');
+        
+        if (trigger) {
+            e.preventDefault();
+            
+            const targetUrl = trigger.getAttribute('href');
+            const template = document.getElementById('dbSourceFormTemplate');
+            
+            if (!template) return;
+
+            // 1. Cloner le formulaire HTML du template sans toucher à l'original
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = template.innerHTML;
+            const form = tempDiv.querySelector('#dbSourceRealForm');
+            
+            // Fixer l'action URL correspondante (add ou edit)
+            form.setAttribute('action', targetUrl);
+
+            let modalTitle = "Ajouter une Source de Données";
+
+            // 2. OPTIMISATION MODIFICATION : Si c'est un bouton "Modifier", on extrait les attributs data HTML
+            if (targetUrl.includes('edit')) {
+                modalTitle = "Modifier la Source de Données";
+                
+                // Pré-remplissage ultra-rapide en JS local (Exemple si vous passez des attributs data- sur le bouton)
+                tempDiv.querySelector('#modal_name').value = trigger.dataset.name || '';
+                tempDiv.querySelector('#modal_db_type').value = trigger.dataset.dbtype || 'mysql';
+                tempDiv.querySelector('#modal_host').value = trigger.dataset.host || '';
+                tempDiv.querySelector('#modal_database_name').value = trigger.dataset.dbname || '';
+                tempDiv.querySelector('#modal_port').value = trigger.dataset.port || '';
+                tempDiv.querySelector('#modal_username').value = trigger.dataset.username || '';
+                // Le mot de passe reste vide par sécurité pour ne pas écraser l'ancien
+                tempDiv.querySelector('#modal_password').required = false; 
             }
 
-        } else {
-            alert(data.error);
+            // 3. OUVERTURE INSTANTANÉE DU MODAL (0ms d'attente réseau)
+            Swal.fire({
+                title: modalTitle,
+                html: tempDiv.innerHTML,
+                showConfirmButton: false,
+                focusConfirm: false,
+                width: '560px', // Largeur optimisée pour les paires de colonnes horizontalement
+                background: '#ffffff',
+                padding: '1.5rem',
+                customClass: {
+                    popup: 'rounded-2xl shadow-2xl font-sans',
+                    title: 'text-lg font-semibold text-gray-800 border-b pb-3 mb-2 text-left'
+                },
+                allowOutsideClick: true
+            });
         }
-    })
-    .catch(error => {
-        console.error("Erreur :", error);
-    });
-}); {% endcomment %}
-    /* -----------------------------
-       GESTION DES SOURCES (DÉCONNEXION)
-    ------------------------------*/
-    {% comment %} window.disconnectSource = function(id, element) {
-        // 'element' est le bouton cliqué
-        const statusLabel = element.closest('.grid').querySelector('.status-text');
-        const statusDot = element.closest('.grid').querySelector('.status-dot');
+    });*/
+    
 
-        fetch(`/disconnect/${id}/`)
-            .then(res => res.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    if (statusLabel) {
-                        statusLabel.textContent = "Non connectée";
-                        statusLabel.className = "status-text text-[10px] font-medium text-gray-500";
-                    }
-                    if (statusDot) {
-                        statusDot.className = "status-dot h-2 w-2 rounded-full bg-gray-400";
-                    }
-                }
-            })
-            .catch(err => console.error("Erreur déconnexion:", err));
-}; {% endcomment %}
+});
 
 window.disconnectSource = function(id, element) {
 
@@ -250,29 +681,6 @@ window.disconnectSource = function(id, element) {
         })
         .catch(err => console.error("Erreur déconnexion:", err));
 };
-
-    {% comment %} window.disconnectSource = function(id, element) {
-
-    const card = element.closest('[data-id]');
-    const statusLabel = card.querySelector('.status-text');
-
-    fetch(`/disconnect/${id}/`)
-        .then(res => res.json())
-        .then(data => {
-            if (data.status === 'success') {
-
-                statusLabel.textContent = "Non connectée";
-                statusLabel.className =
-                    "status-text text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600";
-
-                // décocher radio
-                const radio = card.querySelector('input[type="radio"]');
-                if (radio) radio.checked = false;
-            }
-        })
-        .catch(err => console.error("Erreur déconnexion:", err));
-}; {% endcomment %}
-
 
     // Auto-suppression des messages après 5 secondes
 setTimeout(() => {
@@ -323,6 +731,18 @@ window.deleteSource = function(sourceId, buttonElement) {
     });
 };
 
+// Script de traitement pour le bouton d'activation -->
+function triggerAgentActivation(agentId) {
+    const form = document.getElementById('activateAgentForm');
+    if (!form) return;
+    
+    // Génère dynamiquement l'URL Django avec l'ID de l'agent passé par le bouton
+    let baseActionUrl = "{% url 'toggle_agent' 0 %}";
+    form.action = baseActionUrl.replace('0', agentId);
+    
+    // Soumission manuelle sécurisée
+    form.submit();
+}
 
-    </script>
+</script>
 {% endblock %}

@@ -3,10 +3,20 @@ from . import views
 
 urlpatterns = [
     path('', views.chat_view, name='chat'),
+    path('chat/', views.chat_view, name='chat'), 
     path('index/', views.chat_view, name='index'), 
 
+
+    #path('agents/', views.agent_manager, name='agent_manager'),
+    path('add/', views.save_agent, name='add_agent'),
+    path('activer/<int:agent_id>/', views.active_agent_ai, name='active_agent_ai'),
+    path('edit/<int:pk>/', views.save_agent, name='edit_agent'),
+    path('delete/<int:pk>/', views.delete_agent, name='delete_agent'),
+    path('activate/<int:pk>/', views.toggle_agent, name='toggle_agent'),
+
+
     path('agent_ia/', views.agent_ia_view, name='agent_ia'),
-    #path('get_agent_api_response/', views.get_agent_api_response, name='get_agent_api_response'),
+    path('get_agent_api_response/', views.get_agent_api_response, name='get_agent_api_response'),
     #path('get_response/', views.get_response, name='get_response'),
 
     path('parametre/', views.parametre, name='parametre'),

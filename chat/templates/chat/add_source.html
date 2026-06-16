@@ -1,4 +1,5 @@
-<form method="POST">
+
+{% comment %}<form method="POST">
     {% csrf_token %}
     {{ form.as_p }}
 
@@ -7,3 +8,85 @@
         Enregistrer
     </button>
 </form>
+{% endcomment %}
+
+<!-- chat/add_source.html -->
+<div class="text-left w-full px-1">
+    <form method="POST" 
+          action="{% if instance %}{% url 'edit_source' instance.id %}{% else %}{% url 'add_source' %}{% endif %}" 
+          class="space-y-3">
+        {% csrf_token %}
+        
+        <!-- Organisation en Grille à 2 colonnes avec Tailwind -->
+        <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-left text-gray-700 source-form-container">
+            
+            <!-- Le champ Nom prend toute la largeur de la grille (2 colonnes) -->
+            <div class="col-span-2">
+                {{ form.name.errors }}
+                <label>{{ form.name.label }}</label>
+                {{ form.name }}
+            </div>
+
+            <!-- Type de BDD -->
+            <div>
+                {{ form.db_type.errors }}
+                <label>{{ form.db_type.label }}</label>
+                {{ form.db_type }}
+            </div>
+
+            <!-- Hôte (Host) -->
+            <div>
+                {{ form.host.errors }}
+                <label>{{ form.host.label }}</label>
+                {{ form.host }}
+            </div>
+
+            <!-- Nom de la BDD -->
+            <div>
+                {{ form.database_name.errors }}
+                <label>Nom Base de données</label>
+                {{ form.database_name }}
+            </div>
+
+            <!-- Port -->
+            <div>
+                {{ form.port.errors }}
+                <label>{{ form.port.label }}</label>
+                {{ form.port }}
+            </div>
+
+            <!-- Identifiant (Username) -->
+            <div>
+                {{ form.username.errors }}
+                <label>Identifiant</label>
+                {{ form.username }}
+            </div>
+
+            <!-- Mot de passe -->
+            <div>
+                {{ form.password.errors }}
+                <label>Mot de passe</label>
+                {{ form.password }}
+            </div>
+
+        </div>
+
+        <!-- Bouton d'action principal élargi -->
+        <button type="submit"
+                class="w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 rounded-xl text-sm transition mt-4 shadow-md tracking-wide">
+            {% if instance %}Enregistrer les modifications{% else %}Enregistrer la base{% endif %}
+        </button>
+    </form>
+</div>
+
+<!-- Styles d'alignement et de structure des labels pour SweetAlert2 -->
+<style>
+    .source-form-container label {
+        display: block;
+        font-size: 0.8rem; /* text-xs */
+        color: #4b5563; /* text-gray-600 */
+        margin-bottom: 0.125rem;
+        font-weight: 500;
+        text-align: left;
+    }
+</style>
