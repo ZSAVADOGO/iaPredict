@@ -26,6 +26,7 @@ SECRET_KEY = 'django-insecure-z2i8g4znd53d29@#e6)*i4lv0sybi@^opr2*zr5!p1&k_61n=3
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+
 ALLOWED_HOSTS = []
 
 TAILWIND_APP_NAME = 'theme'
@@ -116,13 +117,21 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+#LANGUAGE_CODE = 'en-us'
 
 TIME_ZONE = 'UTC'
 
 USE_I18N = True
 
 USE_TZ = True
+
+# settings.py
+LANGUAGE_CODE = 'fr-fr'
+USE_TZ = True  # Permet de gérer automatiquement l'heure locale (Timezone)
+
+# Forcer le format d'affichage
+USE_L10N = False 
+DATETIME_FORMAT = 'd/m/Y a H:i:s'
 
 
 # Static files (CSS, JavaScript, Images)

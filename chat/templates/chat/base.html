@@ -1,63 +1,72 @@
 {% load static tailwind_tags %}
-<!DOCTYPE html>
+<!doctype html>
 <html lang="fr">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>
-            {% block title %} Ia Predict {% endblock %}
-        </title>
-        {% tailwind_css %}
-         <!-- SWEET ALERT CSS -->
-    <link rel="stylesheet"
-          href="{% static 'css/sweetalert2.min.css' %}">
-    </head>
-    <body class="bg-gray-100 min-h-screen flex flex-col">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %} Ia Predict {% endblock %}</title>
+    {% tailwind_css %}
+    <!-- SWEET ALERT CSS -->
+    <link rel="stylesheet" href="{% static 'css/sweetalert2.min.css' %}" />
+
+    <!-- CHARGEMENT DANS LE HEAD (Avec defer pour respecter l'ordre et ne pas bloquer le HTML) -->
+    <script src="{% static 'js/sweetalert2.all.min.js' %}" defer></script>
+    <script src="{% static 'js/alerts.js' %}" defer></script>
+  </head>
+    <!-- <body class="bg-gray-100 min-h-screen flex flex-col"> -->
+<body class="bg-gray-100 min-h-screen flex flex-col">
         <!-- Barre de navigation (Fixée en haut) -->
-        <nav class="flex justify-center gap-6 p-4 bg-white shadow-sm w-full">
-            <a href="{% url 'chat' %}"
-               class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm font-medium">
-                Accueil
-            </a>
-            <a href="{% url 'parametre' %}"
-               class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium cursor-pointer">
-                Parametres
-            </a>
+    {% comment %} <nav class="flex justify-center gap-6 p-4 bg-white shadow-sm w-full"> {% endcomment %}
+    <nav class="flex justify-center gap-6 p-4 bg-white shadow-sm w-full sticky top-0 z-50">
+    <a
+        href="{% url 'chat' %}"
+        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm font-medium"
+      >
+        Accueil
+      </a>
+      <a
+        href="{% url 'parametre' %}"
+        class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium cursor-pointer"
+      >
+        Parametres
+      </a>
 
-            <a href="{% url 'agent_ia' %}"
-            class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium cursor-pointer">
-                Agents IA
-            </a>
-        </nav>
-        <!-- Zone de contenu (Prend tout l'espace restant et centre le bloc) -->
-        <main class="flex-1 flex items-center justify-center p-4">
-            <div class="w-full max-w-6xl">
-                <!-- Optionnel : limite la largeur du contenu -->
-                {% block content %}
-                {% endblock %}
+      <a
+        href="{% url 'agent_ia' %}"
+        class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium cursor-pointer"
+      >
+        Agents IA
+      </a>
+    </nav>
+    <!-- Zone de contenu (Prend tout l'espace restant et centre le bloc) -->
+    {% comment %}
+    <main class="flex-1 flex items-center justify-center p-4">
+      <div class="w-full max-w-6xl">{% block content %} {% endblock %}</div>
+    </main>
+    {% endcomment %}
+ <main class="flex-1 p-4">
+        <div class="w-full max-w-6xl mx-auto">
+            {% block content %}
+            {% endblock %}
+        </div>
+    </main>
+    {% comment %} bon mais on veut mieux<main
+      class="flex-1 flex p-4 overflow-hidden"
+      style="height: calc(100vh - 64px)">
+      <div class="w-full max-w-6xl mx-auto">
+        {% block content %} {% endblock %}
+      </div>
+    </main> {% endcomment %}
 
-                {% comment %} {% if messages %}
-                {% for message in messages %}
-                    <script>
-                        document.addEventListener("DOMContentLoaded", function () {
-                            Swal.fire({
-                                icon: '{{ message.tags }}',
-                                title: '{{ message.tags|title }}',
-                                text: '{{ message }}',
-                                timer: 2500,
-                                showConfirmButton: true,
-                            });
-                        });
-                    </script>
-                {% endfor %}
-            {% endif %} {% endcomment %}
-            </div>
-        </main>
-        <!-- SWEET ALERT -->
+    <footer class="bg-white shadow-sm p-2 text-center text-xs text-gray-400">
+        Mon App © 2026
+    </footer>
+    <!-- SWEET ALERT -->
     <script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
 
     <!-- ALERTS CENTRALISEES -->
     <script src="{% static 'js/alerts.js' %}"></script>
 
-    </body>
+     
+  </body>
 </html>

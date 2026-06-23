@@ -111,7 +111,8 @@ document.getElementById('chat-form').addEventListener('submit', function(e) {
     loadingId.classList.remove('hidden');
 
     // Appel AJAX
-    fetch("{% url 'get_agent_api_response' %}", {
+    //fetch("{% url 'get_agent_api_response' %}", {
+    fetch("{% url '/' %}", {
         method: 'POST',
         headers: {
             'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,

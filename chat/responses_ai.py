@@ -1,5 +1,6 @@
 #------------------- Configuration de l'API OpenAI ------------------#
 import os
+from urllib import response
 
 from openai import OpenAI
 from google import genai
@@ -77,16 +78,16 @@ RESPONSES = {
 }
 
 
-def generate_response(message):
+def generate_response(message, system_instruction=None):
     msg = message.lower()
     for key in RESPONSES:
         if key in msg:
             # Retourne un dictionnaire pour garder une structure cohérente
             return {"status": "success", "text": RESPONSES[key], "agent_name": "Système"}
-            
     try:
         # Appel à l'IA
-        ai_reply, agent_name = generate_ai_response(message)
+        ai_reply, agent_name = generate_ai_response(message, system_instruction)
+        #ai_reply, agent_name = generate_response_deepseek(message)
         return {
             "status": "success", 
             "text": ai_reply, 
@@ -100,8 +101,30 @@ def generate_response(message):
     except Exception as e:
         return {"status": "error", "message": f"Erreur Ai : {str(e)}"}
 
+# A SUPPRIMER 
+def generate_response_deepseek(user_message):
+    client = OpenAI(
+    api_key=os.environ.get('DEEPSEEK_API_KEY'),
+    base_url="https://api.deepseek.com")
 
-def generate_ai_response(user_message):
+    response = client.chat.completions.create(
+    model="deepseek-chat",
+    messages=[
+        {"role": "system", "content": "You are a helpful assistant"},
+        {"role": "user", "content": user_message},
+    ],
+    stream=False,
+    reasoning_effort="high",
+    extra_body={"thinking": {"type": "enabled"}}
+)
+
+    print(response.choices[0].message.content)
+
+    return response
+ 
+
+
+def generate_ai_response(user_message, system_instruction):
     client = genai.Client()
     
     # 1. On cherche l'agent actif sélectionné par l'utilisateur
@@ -112,7 +135,8 @@ def generate_ai_response(user_message):
         raise ValueError("Aucun agent n'est sélectionné. Veuillez en activer un.")
     
     selected_model = active_agent.model_name
-    system_prompt = active_agent.system_instruction
+    #system_prompt = active_agent.system_instruction
+    system_prompt = system_instruction
     
     # 2. Appel au modèle avec la configuration de l'agent
     response = client.models.generate_content(
@@ -123,7 +147,7 @@ def generate_ai_response(user_message):
         ),
     )
     # On retourne la réponse ET le nom de l'agent (ex: active_agent.name)
-    return response.text, active_agent.name 
+    return response.text, active_agent.name
 
 
 # Bon mais veut optimiser

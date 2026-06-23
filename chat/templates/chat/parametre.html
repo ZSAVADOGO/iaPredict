@@ -1,9 +1,9 @@
-{% extends 'chat/base.html' %}
+{% extends "chat/base.html" %}
 {% block content %}
-    <div class="container mx-auto flex flex-row gap-4">
-        {% comment %} <div class="flex flex-row gap-4 w-full h-[600px] items-start"> {% endcomment %}
-        <!-- Premier bloc (Largeur : 3/12 soit 25%) -->
-        <div class="w-max bg-white rounded-xl shadow-lg p-4">
+    {% comment %} <div class="container mx-auto flex flex-row gap-4"> {% endcomment %}
+<div class="container mx-auto flex flex-row gap-4 h-[600px]"> 
+        {% comment %} <div class="w-max bg-white rounded-xl shadow-lg p-4"> {% endcomment %}
+        <div class="flex-1 bg-white rounded-xl shadow-lg p-4 overflow-y-auto min-h-0">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-bold text-gray-800">Sources SQL</h3>
                 {% comment %} <a href="{% url 'add_source' %}" class="text-xs bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-md">+ Ajouter</a> {% endcomment %}
@@ -13,23 +13,26 @@
                     + Nouveau
                 </a>
             </div>
-            <form method="POST" action="{% url 'activ_source' %}" id="activateForm">
+            {% comment %} <form method="post" action="{% url 'activ_source' %}" id="dbSourceForm"> {% endcomment %}
+            <form method="post"
+                  action="{% url 'toggle_db_source' 0 %}"
+                  id="dbSourceForm">
                 {% csrf_token %}
                 {% comment %} <div class="max-h-[400px] overflow-y-auto space-y-2 p-1 pr-2 border rounded-lg border-gray-100"> {% endcomment %}
-                <div class="overflow-y-auto space-y-2 p-1 pr-2 border rounded-lg border-gray-100">
+                <div class="overflow-y-auto space-y-2 p-1 pr-2 border rounded-lg border-gray-100 overflow-hidden">
                     {% for source in data_sources %}
-                        <!-- Conteneur avec padding réduit (p-2) et hauteur minimale -->
-                        <div data-id="{{ source.id }}"
-                             class="p-2 bg-gray-50 rounded-md flex flex-col gap-1 border border-gray-200">
-                            <div class="flex justify-between items-center w-full">
+                        <!-- source-item-row permet de supprimer la ligne et la supprimer en suivant les repêrcussions -->
+                        <div data-id="{{ source.id }}" 
+                             class="source-item-row p-2 bg-gray-50 rounded-md flex flex-col gap-1 border border-gray-200">
+                            <div class=" flex justify-between items-center w-full">
                                 <label>
                                     <div class="flex items-center gap-2">
-                                        <!-- Radio discret -->
-                                        <input type="radio"
-                                               name="active_source"
-                                               value="{{ source.id }}"
-                                               {% if source.is_active %}checked{% endif %}
-                                               class="accent-teal-600 h-3.5 w-3.5 cursor-pointer opacity-80">
+                                        <input type="checkbox"
+                                                    name="active_sources"
+                                                    value="{{ source.id }}"
+                                                    {% if source.is_active %}checked{% endif %}
+                                                class="accent-teal-600 h-6 w-6 rounded-md border-gray-300 cursor-pointer transition duration-150 ease-in-out focus:ring-teal-500">
+
                                         <!-- Conteneur Nom + Type -->
                                         <div class="flex items-center gap-2">
                                             <span class="text-xs font-semibold text-gray-700">{{ source.name }}</span>
@@ -40,77 +43,80 @@
                                         </div>
                                     </div>
                                 </label>
-                                <!-- Statut : Couleurs pastel plus douces, sans fond plein -->
-                                <div class="flex items-center">
-                                    <span class="status-text text-[10px] px-1.5 py-0.5 rounded {% if source.status == "connected" %} bg-green-100 text-green-700 {% else %} bg-gray-100 text-gray-600 {% endif %}">
-                                        {{ source.get_status_display }}
-                                    </span>
+                               
+                                <!-- Statut visuel discret -->
+                                <div class="flex items-center shrink-0 ml-2">
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded font-medium 
+                                                        {% if source.status == 'error' %}
+                                                            bg-red-100 text-red-700
+                                                        {% elif source.is_active %}
+                                                            bg-green-100 text-green-700
+                                                        {% else %}
+                                                            bg-gray-100 text-gray-500
+                                                        {% endif %}">
+                                                        
+                                                        {% if source.status == 'error' %}
+                                                            Connexion refusée
+                                                        {% elif source.is_active %}
+                                                            Actif
+                                                        {% else %}
+                                                            Inactif
+                                                        {% endif %}
+                                                    </span>
                                 </div>
                             </div>
-                            <div class="flex justify-start items-center gap-1 mt-1.5 pt-1.5 border-t border-gray-100">
+                        <div class="flex justify-start items-center gap-1 mt-1.5 pt-1.5 border-t border-gray-100">
+                            <!-- Bouton Activer adapté dans votre boucle Django -->
+                            <a href="{% url 'activ_source' source.id %}"
+                            class="btn-activate-db text-[10px] px-2 py-0.5 font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors shadow-sm"
+                            data-url="{% url 'activ_source' source.id %}">
+                                Activer
+                            </a>
                                 <!-- Bouton Tester -->
-                                <a href="{% url 'test_connect_bdd' source.id %}"
-                                   class="text-[10px] px-2 py-0.5 font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors shadow-sm">
-                                    Connect
-                                </a>
-                                {% comment %}    <a href="{% url 'de_connect_bdd' source.id %}" onclick="disconnectSource('{{ source.id }}', this)" class="text-[10px] px-2 py-0.5 font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors shadow-sm">
-                                    Deconnect
-                                </a> {% endcomment %}
                                 <button type="button"
                                         onclick="disconnectSource('{{ source.id }}', this)"
                                         class="text-[10px] px-2 py-0.5 font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors shadow-sm">
                                     Deconnect
                                 </button>
-                                <!-- Bouton Modif -->
-                                <a href="{% url 'edit_source' source.id %}"
-                                   class="text-[10px] px-2 py-0.5 font-semibold text-gray-600 bg-white hover:bg-gray-50 border border-gray-300 rounded transition-colors shadow-sm">
+                                <!-- Bouton à insérer dans la boucle de vos bases de données -->
+                                <button type="button" 
+                                        class="btn-edit-db text-[10px] px-2 py-0.5 font-semibold text-gray-600 bg-white hover:bg-gray-50 border border-gray-300 rounded transition-colors shadow-sm"
+                                        data-id="{{ source.id }}"
+                                        data-name="{{ source.name }}"
+                                        data-type="{{ source.db_type }}"
+                                        data-host="{{ source.host }}"
+                                        data-port="{{ source.port }}"
+                                        data-dbname="{{ source.database_name }}"
+                                        data-user="{{ source.username }}"
+                                        data-created="{{ source.date_creation|date:'d/m/Y H:i' }}"
+                                        data-updated="{{ source.date_modification|date:'d/m/Y H:i' }}">
                                     Modif
-                                </a>
-                                <button type="button"
+                                </button>
+                                {% comment %} <button type="button"
                                         onclick="deleteSource('{{ source.id }}', this)"
                                         class="text-[10px] px-2 py-0.5 font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors shadow-sm">
                                     Suppr
+                                </button> {% endcomment %}
+                                <button type="button"
+                                                onclick="window.deleteSource('{{ source.id }}', this)"
+                                                class="text-[10px] px-2 py-0.5 font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors shadow-sm">
+                                            Suppr
                                 </button>
-                            </div>
                         </div>
+                    </div>
                     {% endfor %}
                 </div>
-                <!-- Zone des Messages Django -->
-                {% comment %} <div id="django-messages" class="fixed top-5 right-5 z-50 flex flex-col gap-3 w-72">
-                    {% if messages %}
-                        {% for message in messages %}
-                            <div class="p-3 rounded-lg border shadow-lg flex items-center justify-between transition-all duration-500 transform translate-x-0 {% if message.tags == 'error' %} bg-red-50 border-red-200 text-red-700 {% elif message.tags == 'success' %} bg-green-50 border-green-200 text-green-700 {% else %} bg-blue-50 border-blue-200 text-blue-700 {% endif %}">
-                                <div class="flex items-center gap-2">
-                                    {% if message.tags == 'error' %}
-                                        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd">
-                                            </path>
-                                        </svg>
-                                    {% endif %}
-                                    <span class="text-xs font-semibold">{{ message }}</span>
-                                </div>
-                                <!-- Bouton fermer manuel -->
-                                <button onclick="this.parentElement.remove()" class="text-current opacity-50 hover:opacity-100">
-                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                    </svg>
-                                </button>
-                            </div>
-                        {% endfor %}
-                    {% endif %}
-                </div> {% endcomment %}
-                <button type="submit"
-                        class="mt-4 text-xs bg-indigo-600 text-white px-3 py-1 rounded-md">
-                    Activer la source sélectionnée
-                </button>
+                
             </form>
         </div>
-        <div class="bg-white rounded-xl shadow-lg p-4">
+
+        {% comment %} <div class="bg-white rounded-xl shadow-lg p-4"> {% endcomment %}
+        <div class="flex-1 bg-white rounded-xl shadow-lg p-4 overflow-y-auto min-h-0">
             <!-- En-tête avec statut dynamique -->
             <div class="flex justify-between items-center mb-4">
                 <div>
                     <h3 class="text-lg font-bold text-gray-800">🤖 Vos Agents IA Llms</h3>
-                    <p class="text-xs font-bold text-red-600 animate-pulse">
+                    <p class="text-xs font-bold text-gray-500 animate-pulse">
                         <span>Statut :</span>
                         {% if active_agent %}
                             <!-- Badge de l'agent actif bien visible -->
@@ -135,15 +141,15 @@
                 </div>
             </div>
             <!-- Formulaire d'activation manuel -->
-            <form method="POST"
+            <form method="post"
                   action="{% url 'toggle_agent' 0 %}"
                   id="activateAgentForm">
                 {% csrf_token %}
-                <div class="overflow-y-auto space-y-2 p-1 pr-2 border rounded-lg border-gray-100 max-h-[350px]">
+                <div class="overflow-y-auto space-y-2 p-1 pr-2 border rounded-lg border-gray-100 overflow-hidden">
                     {% for agent in agents %}
                         <!-- Conteneur compact (p-2) -->
                         <div data-id="{{ agent.id }}"
-                             class="p-2 {% if agent.is_active %}bg-green-50/70 border-green-300{% else %}bg-gray-50 border-gray-200{% endif %} rounded-md flex flex-col gap-1 border transition-all">
+                             class="source-item-row p-2 {% if agent.is_active %}bg-green-50/70 border-green-300{% else %}bg-gray-50 border-gray-200{% endif %} rounded-md flex flex-col gap-1 border transition-all">
                             <div class="flex justify-between items-center w-full">
                                 <label>
                                     <div class="flex items-center gap-2 min-w-0 flex-1">
@@ -153,7 +159,8 @@
                                                value="{{ agent.id }}"
                                                {% if agent.is_active %}checked{% endif %}
                                                disabled
-                                               class="accent-teal-600 h-3.5 w-3.5 opacity-80 shrink-0 pointer-events-none">
+                                               class="accent-teal-600 h-6 w-6 rounded-md border-gray-300 cursor-pointer transition duration-150 ease-in-out focus:ring-teal-500">
+                                               {% comment %} class="accent-teal-600 h-3.5 w-3.5 opacity-80 shrink-0 pointer-events-none"> {% endcomment %}
                                         <!-- Conteneur Nom + Modèle -->
                                         <div class="flex items-center gap-2 min-w-0 truncate">
                                             <span class="text-xs font-semibold text-gray-700 truncate">{{ agent.name }}</span>
@@ -189,92 +196,62 @@
                                     </a>
                                 {% endif %}
                                 <!-- Bouton Modifier -->
-                                <a href="{% url 'edit_agent' agent.id %}"
+                                {% comment %} <a href="{% url 'edit_agent' agent.id %}"
                                    class="text-[10px] px-2 py-0.5 font-semibold text-gray-600 bg-white hover:bg-gray-50 border border-gray-300 rounded transition-colors shadow-sm">
                                     Modif
-                                </a>
+                                </a> {% endcomment %}
+                                {% comment %} <button type="button" 
+                                        class="btn-edit text-[10px] px-2 py-0.5 font-semibold text-gray-600 bg-white hover:bg-gray-50 border border-gray-300 rounded transition-colors shadow-sm"
+                                        data-id="{{ agent.id }}"
+                                        data-name="{{ agent.name }}"
+                                        data-model="{{ agent.model_name }}"
+                                        data-instruction="{{ agent.system_instruction }}"
+                                        data-active="{% if agent.is_active %}true{% else %}false{% endif %}">
+                                    Modif
+                                </button> {% endcomment %}
+
+                                <button type="button" 
+                                        class="btn-edit text-[10px] px-2 py-0.5 font-semibold text-gray-600 bg-white hover:bg-gray-50 border border-gray-300 rounded transition-colors shadow-sm"
+                                        data-id="{{ agent.id }}"
+                                        data-name="{{ agent.name }}"
+                                        data-model="{{ agent.model_name }}"
+                                        data-api-key="{{ agent.api_key }}"
+                                        data-instruction="{{ agent.system_instruction }}"
+                                        data-active="{% if agent.is_active %}true{% else %}false{% endif %}"
+                                        data-created="{{ agent.date_creation|date:'d/m/Y H:i:s' }}"
+                                        data-updated="{{ agent.date_modification|date:'d/m/Y H:i:s' }}">
+                                    Modif
+                                </button>
                                 <!-- Bouton Supprimer -->
-                                <a href="{% url 'delete_agent' agent.id %}"
+                                 <!-- 2. Le bouton de suppression corrigé -->
+                                <button type="button"
+                                            onclick="window.deleteAgent('{{ agent.id }}', this)"
+                                            class="text-[10px] px-2 py-0.5 font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors shadow-sm">
+                                        Suppr
+                                    </button>
+                               {% comment %}  <a href="{% url 'delete_agent' agent.id %}"
                                    onclick="return confirm('Supprimer cet agent ?')"
                                    class="text-[10px] px-2 py-0.5 font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors shadow-sm">
                                     Suppr
-                                </a>
+                                </a> {% endcomment %}
+
                             </div>
                         </div>
-                        {% if messages %}
-                            <script>
-        document.addEventListener("DOMContentLoaded", function() {
-            {% for message in messages %}
-                {% if message.tags == 'error' %}
-                    alertError("{{ message|escapejs }}");
-                {% else %}
-                    alertInfo("{{ message|escapejs }}");
-                {% endif %}
-            {% endfor %}
-        });
-                            </script>
-                        {% endif %}
+                        
                     {% empty %}
                         <div class="p-6 text-center text-xs text-gray-400 italic">Aucun agent configuré pour le moment.</div>
                     {% endfor %}
                 </div>
             </form>
         </div>
-        {% comment %} <div class="bg-white rounded-xl shadow-lg p-4">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-gray-800">🤖 Vos Agents IA Llms</h3>
-                <button onclick="alertWarning('Bienvenue sur la plateforme')" class="text-xs bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-md">
-                    + Ajouter
-                </button>
-                <button type="button" id="openModalBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-xl text-sm transition shadow-sm">
-                    {% if agent %}
-                        Modifier l'Agent
-                    {% else %}
-                        Ajouter un Agent
-                    {% endif %}
-                </button>
-            </div>
-            <div class="overflow-y-auto space-y-2 p-1 pr-2 border rounded-lg border-gray-100">
-                {% for agent in agents %}
-                    <div class="border rounded-xl p-4 flex justify-between items-center {% if agent.is_active %}border-green-500 bg-green-50/50{% else %}border-gray-200{% endif %}">
-                        <div>
-                            <div class="flex justify-between items-center gap-2">
-                                <span class="text-xs font-semibold text-gray-700">{{ agent.name }}</span>
-                                {% if agent.is_active %}
-                                    <span class="bg-green-200 text-green-700 text-xs px-2 py-0.5 rounded-full font-medium">Actif</span>
-                                {% endif %}
-                            </div>
-                            <p class="text-xs text-gray-500">
-                                Modèle : <code class="bg-gray-100 px-1.5 py-0.5 rounded text-red-600">{{ agent.model_name }}</code>
-                            </p>
-                            <p class="text-xs text-gray-600">{{ agent.api_key }}</p>
-                            <p class="text-sm text-gray-600 mt-2 italic line-clamp-1">"{{ agent.system_instruction }}"</p>
-                            <div class="flex justify-start items-center gap-1 mt-1.5 pt-1.5 border-t border-gray-100">
-                                {% if not agent.is_active %}
-                                    <a href="{% url 'toggle_agent' agent.id %}" class="text-[10px] px-2 py-0.5 font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded transition-colors shadow-sm">
-                                        Activer
-                                    </a>
-                                {% endif %}
-                                <a href="{% url 'edit_agent' agent.id %}" class="text-[10px] px-2 py-0.5 font-semibold text-gray-600 bg-white hover:bg-gray-50 border border-gray-300 rounded transition-colors shadow-sm">
-                                    Modif ✏️
-                                </a>
-                                <a type="button" href="{% url 'delete_agent' agent.id %}" onclick="return confirm('Supprimer cet agent ?')" class="text-[10px] px-2 py-0.5 font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors shadow-sm">
-                                    Suppr 🗑️
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                {% empty %}
-                    <p class="text-gray-500 text-sm text-center py-4">Aucun agent configuré pour le moment.</p>
-                {% endfor %}
-            </div>
-        </div>  {% endcomment %}
-        {% comment %} ######################################################## {% endcomment %}
+
+            <div class="flex-1 bg-white rounded-xl shadow-lg p-4 overflow-y-auto"></div>
+        
         <!-- 2. Le Template invisible  (Chargement immédiat en RAM) -->
         {% comment %} ######################################################## {% endcomment %}
         <!-- 2. Le Template HTML instantané (Chargement immédiat en RAM) -->
         <template id="dbSourceFormTemplate">
-            <form method="POST"
+            <form method="post"
                   id="dbSourceRealForm"
                   action="{% url 'add_source' %}"
                   class="w-full text-left space-y-5 font-sans block"
@@ -366,8 +343,12 @@
                                placeholder="••••••••">
                     </div>
                 </div>
-                <!-- mt-6 fait descendre la div complète vers le bas -->
+<span id="connection-status-span" style="display: none; font-size: 12px; font-weight: 600; margin-bottom: 10px;"></span>
                 <div class="w-full flex flex-row justify-center gap-4 mb-3 mt-6">
+                <button type="button" id="btn-test-connection"
+                    class="text-xs px-4 py-2 font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-colors shadow-sm">
+                Tester la connexion
+            </button>
                     <!-- Bouton de validation -->
                     <button type="submit"
                             class="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 px-6 rounded-xl text-sm transition shadow-md tracking-wide">
@@ -382,11 +363,83 @@
                 </div>
             </form>
         </template>
-        {% comment %} ######################################################## {% endcomment %}
+
+        <!-- Template pour la modification du dBSOurce-->
+        <template id="editDbSourceTemplate">
+    <form method="post" action="" class="w-full text-left space-y-5 font-sans block">
+        {% csrf_token %}
+        
+        <!-- Champ Nom -->
+        <div class="w-full block mb-3">
+            <label class="block text-xs font-semibold text-gray-700 mb-1">Nom de la source</label>
+            <input type="text" name="name" id="edit_db_name" required class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none">
+        </div>
+
+        <!-- 1. Type de BDD et Hôte -->
+        <div class="w-full flex flex-row gap-4 mb-3">
+            <div style="flex: 1 1 0% !important;">
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Type de BDD</label>
+                <select name="db_type" id="edit_db_type" class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none bg-white">
+                    <option value="mysql">MySQL</option>
+                    <option value="postgres">PostgreSQL</option>
+                </select>
+            </div>
+            <div style="flex: 2 1 0% !important;">
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Hôte (Host)</label>
+                <input type="text" name="host" id="edit_db_host" required class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none">
+            </div>
+        </div>
+
+        <!-- 2. Nom Base de données et Port -->
+        <div class="w-full flex flex-row gap-4 mb-3">
+            <div style="flex: 2 1 0% !important;">
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Nom Base de données</label>
+                <input type="text" name="database_name" id="edit_db_database_name" required class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none">
+            </div>
+            <div style="flex: 1 1 0% !important;">
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Port</label>
+                <input type="number" name="port" id="edit_db_port" required class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none">
+            </div>
+        </div>
+
+        <!-- 3. Identifiant et Mot de passe -->
+        <div class="w-full flex flex-row gap-4 mb-3">
+            <div class="flex-1" style="flex: 1 1 0% !important;">
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Identifiant</label>
+                <input type="text" name="username" id="edit_db_username" required class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none">
+            </div>
+            <div class="flex-1" style="flex: 1 1 0% !important;">
+                <label class="block text-xs font-semibold text-gray-700 mb-1">Mot de passe (Laisser vide si inchangé)</label>
+                <input type="password" name="password" id="edit_db_password" class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none" placeholder="••••••••">
+            </div>
+        </div>
+
+        <!-- Section Métadonnées : Dates en miniature délimitées discrètement -->
+        <div id="edit_db_dates_container" class="flex justify-between items-center pt-2 text-[10px] text-gray-400 border-t border-gray-100 font-medium">
+            <div>
+                <span>Créée le :</span>
+                <span id="edit_db_created_at" class="font-mono text-gray-500 ml-1">—</span>
+            </div>
+            <div>
+                <span>Modifiée le :</span>
+                <span id="edit_db_updated_at" class="font-mono text-gray-500 ml-1">—</span>
+            </div>
+        </div>
+
+        <!-- Boutons d'action -->
+        <div class="w-full flex flex-row justify-center gap-4 mt-2">
+            <button type="submit" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 px-6 rounded-xl text-sm transition shadow-md tracking-wide">
+                Enregistrer
+            </button>
+            <button type="button" onclick="Swal.close()" class="bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-2.5 px-6 rounded-xl text-sm transition shadow-md tracking-wide">
+                Annuler
+            </button>
+        </div>
+    </form>
+</template>
         <!-- 2. Le Template invisible contenant votre formulaire Django d'origine nettoyé -->
-        {% comment %} ######################################################## {% endcomment %}
         <template id="agentFormTemplate">
-            <form method="POST"
+            <form method="post"
                   action="{% if agent %}{% url 'edit_agent' agent.id %}{% else %}{% url 'add_agent' %}{% endif %}"
                   class="space-y-4 text-left">
                 {% csrf_token %}
@@ -447,12 +500,157 @@
                 </div>
             </form>
         </template>
+
+        <!-- Balise Template contenant le formulaire brut -->
+{% comment %} <template id="agentFormTemplate">
+    <form method="post" action="{% url 'edit_agent' %}" class="space-y-4 text-left">
+        {% csrf_token %}
+        <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nom de l'agent</label>
+            <input type="text" name="name" required class="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-teal-500">
+        </div>
+        <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nom du modèle</label>
+            <input type="text" name="model_name" required class="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-teal-500">
+        </div>
+        <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Clé API</label>
+            <input type="password" name="api_key" class="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-teal-500">
+        </div>
+        <div>
+            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Instructions Système</label>
+            <textarea name="system_instruction" rows="3" class="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-teal-500"></textarea>
+        </div>
+        <div class="flex items-center gap-2">
+            <input type="checkbox" name="is_active" id="modal_is_active" class="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded">
+            <label for="modal_is_active" class="text-sm font-medium text-gray-700">Activer immédiatement</label>
+        </div>
+        <div class="flex justify-end gap-2 pt-2 border-t">
+            <button type="submit" class="px-4 py-2 text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg shadow-sm transition-colors">
+                Enregistrer
+            </button>
+        </div>
+    </form>
+</template> {% endcomment %}
+<!-- Balise Template corrigée -->
+<!-- Template dédié exclusivement à la modification -->
+<template id="editAgentTemplate">
+    <form method="post" action="" class="space-y-4 text-left">
+        {% csrf_token %}
+        
+        <!-- Section Métadonnées : Dates affichées discrètement -->
+        {% comment %} <div id="edit_dates_container" class="grid grid-cols-2 gap-4 p-2 bg-gray-50 border border-gray-100 rounded-lg text-[11px] text-gray-500">
+            <div>
+                <span class="block font-semibold text-gray-600 uppercase tracking-wider text-[9px]">Créé le</span>
+                <span name="date_creation" id="edit_created_at" class="font-mono">—</span>
+            </div>
+            <div>
+                <span class="block font-semibold text-gray-600 uppercase tracking-wider text-[9px]">Modifié le</span>
+                <span id="edit_updated_at" class="font-mono">—</span>
+            </div>
+        </div> {% endcomment %}
+
+        <div>
+            <label class="block text-xs  text-gray-700 uppercase mb-1">Nom de l'agent</label>
+            <input type="text" name="name" id="edit_name" required class="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-teal-500">
+        </div>
+        <div>
+            <label class="block text-xs  text-gray-700 uppercase mb-1">Nom du modèle</label>
+            <input type="text" name="model_name" id="edit_model_name" required class="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-teal-500">
+        </div>
+        <div>
+            <label class="block text-xs  text-gray-700 uppercase mb-1">Clé API (Optionnelle)</label>
+            <input type="text" name="api_key" id="edit_api_key" class="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-teal-500">
+        </div>
+        <div>
+            <label class="block text-xs  text-gray-700 uppercase mb-1">Instructions Système</label>
+            <textarea name="system_instruction" id="edit_system_instruction" rows="3" class="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-teal-500"></textarea>
+        </div>
+        <div class="flex items-center gap-2">
+            <input type="checkbox" name="is_active" id="edit_is_active" class="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded">
+            <label for="edit_is_active" class="text-sm font-medium text-gray-700">Activer cet agent</label>
+        </div>
+
+           <!-- Section Métadonnées : Déplacée en bas, sans cadre et en miniature -->
+    <div id="edit_dates_container" class="flex justify-between items-center pt-2 text-[10px] text-gray-400 border-t border-gray-100 font-medium">
+        <div>
+            <span class"font-bold" >Créé le :</span>
+            <span id="edit_created_at" class="font-mono text-gray-500 ml-1">—</span>
+        </div>
+        <div>
+            <span class"font-semibold">Modifié le :</span>
+            <span id="edit_updated_at" class="font-mono text-gray-500 ml-1">—</span>
+        </div>
+    </div>
+
+         <div class="w-full flex flex-row justify-center gap-4 mb-3 mt-6">
+                    <!-- Bouton de validation -->
+                    <button type="submit"
+                            class="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 px-6 rounded-xl text-sm transition shadow-md tracking-wide">
+                        Enregistrer
+                    </button>
+                    <!-- Bouton d'annulation -->
+                    <button type="button"
+                            onclick="Swal.close()"
+                            class="bg-gray-300 hover:bg-gray-400 text-gray-700 font-semibold py-2.5 px-6 rounded-xl text-sm transition shadow-md tracking-wide">
+                        Annuler
+                    </button>
+                </div>
+    </form>
+</template>
     </div>
 </div>
 <script> 
 
+    // ==========================================
+    // 2. LOGIQUE TRAITEMENT DES MESSAGES DJANGO
+    // ==========================================
+         {% if messages %}
+    document.addEventListener("DOMContentLoaded", function() {
+        {% for message in messages %}
+            if (typeof window.handleDjangoMessage === 'function') {
+                window.handleDjangoMessage("{{ message.tags|escapejs }}", "{{ message|escapejs }}");
+            }
+        {% endfor %}
+    });
+{% endif %}        
+       
 
-        document.getElementById("activateForm").addEventListener("submit", function(e) {
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Interception du clic sur le bouton d'activation
+    document.querySelectorAll('.btn-activate-db').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault(); // 🟢 Bloque la redirection vers la page JSON vierge
+            
+            const url = this.getAttribute('data-url');
+            
+            // 1. Afficher l'alerte de chargement (définie dans votre alerts.js)
+            if (typeof window.alertLoading === 'function') {
+                window.alertLoading("Vérification et connexion à la base de données...");
+            }
+
+            // 2. Lancer la requête en arrière-plan (AJAX via fetch)
+            fetch(url, {
+                method: 'GET',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            })
+            .then(response => {
+                // Qu'il y ait succès ou erreur (Code 400), on recharge la page 
+                // pour laisser Django afficher le bon message flash d'alerte.
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('Erreur réseau:', error);
+                window.location.reload();
+            });
+        });
+    });
+});
+
+/*document.getElementById("dbSourceForm").addEventListener("submit", function(e) {
     e.preventDefault();
 
     const form = this;
@@ -500,14 +698,25 @@
 
     })
     .catch(error => console.error("Erreur activation:", error));
-});
+});*/
+
+// Script de traitement pour le bouton d'activation -->
+function triggerAgentActivation(db_source_id) {
+    const form = document.getElementById('dbSourceForm');
+    if (!form) return;
+    
+    // Génère dynamiquement l'URL Django avec l'ID de l'agent passé par le bouton
+    let baseActionUrl = "{% url 'toggle_db_source' 0 %}";
+    form.action = baseActionUrl.replace('0', db_source_id);
+    
+    // Soumission manuelle sécurisée
+    form.submit();
+}
 
 
 
 document.addEventListener('DOMContentLoaded', function() {
-      // ==========================================
-    // LOGIQUE 1 : Gestion du Modal de l'Agent
-    // ==========================================
+    // LOGIQUE 1 : Gestion du Modal pour ajouter un Agent
     const openBtn = document.getElementById('openModalBtn');
     const template = document.getElementById('agentFormTemplate');
 
@@ -521,6 +730,98 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Bouton edit
+     // Écoute globale des boutons de modification
+    document.querySelectorAll('.btn-edit').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            const template = document.getElementById('editAgentTemplate');
+            if (!template) return;
+
+            // 1. Récupère le contenu HTML brut du template Django
+            const formHtml = template.innerHTML;
+            
+            // 2. Appel de la fonction globale située dans alert.js en lui passant le HTML et le bouton
+            openEditAgentModal(formHtml, this);
+        });
+    });
+
+    // Écouteur pour la modification des bases de données
+    document.querySelectorAll('.btn-edit-db').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const template = document.getElementById('editDbSourceTemplate');
+            
+            if (template && typeof window.openEditDbSourceModal === 'function') {
+                window.openEditDbSourceModal(template.innerHTML, this);
+            }
+        });
+    });
+
+
+    /*// BON MAIS VEUT EDIT
+    const template3 = document.getElementById('editAgentTemplate');
+    if (!template3) return;
+    // Interception du clic sur chaque bouton Modifier
+    document.querySelectorAll('.btn-edit').forEach(button => {
+        button.addEventListener('click', function() {
+            // 1. Récupérer toutes les données de l'agent depuis le bouton cliqué
+            const agentId = this.getAttribute('data-id');
+            const agentName = this.getAttribute('data-name');
+            const agentModel = this.getAttribute('data-model');
+            const agentInstruction = this.getAttribute('data-instruction');
+            const isActive = this.getAttribute('data-active') === 'true';
+
+            // 2. Ouvrir SweetAlert avec le HTML brut du template
+            Swal.fire({
+                title: "Modifier l'Agent",
+                html: template3.innerHTML, // On injecte la structure du formulaire
+                showConfirmButton: false,
+                focusConfirm: false,
+                width: '450px',
+                background: '#ffffff',
+                customClass: {
+                    popup: 'rounded-2xl shadow-2xl p-6'
+                },
+                allowOutsideClick: true,
+                
+                // 3. Remplir les champs une fois que la modale est réellement injectée dans le DOM
+                didOpen: () => {
+                    const popup = Swal.getPopup();
+                    
+                    // Configuration de l'URL d'action du formulaire
+                    const form = popup.querySelector('form');
+                    if (form) {
+                        form.action = `/edit/${agentId}/`;
+                    }
+
+                    // Remplissage des champs de texte
+                    const nameInput = popup.querySelector('#edit_name');
+                    if (nameInput) nameInput.value = agentName || '';
+
+                    const modelInput = popup.querySelector('#edit_model_name');
+                    if (modelInput) modelInput.value = agentModel || '';
+
+                    const instructionInput = popup.querySelector('#edit_system_instruction');
+                    if (instructionInput) {
+                        // Nettoyage des chaînes vides ou par défaut
+                        if (agentInstruction === "Aucune instruction configurée." || agentInstruction === '""' || !agentInstruction) {
+                            instructionInput.value = '';
+                        } else {
+                            instructionInput.value = agentInstruction;
+                        }
+                    }
+
+                    // Configuration de la case à cocher
+                    const activeCheckbox = popup.querySelector('#edit_is_active');
+                    if (activeCheckbox) activeCheckbox.checked = isActive;
+                }
+            });
+        });
+    });*/
+
+    // LOGIQUE 3 
     const openBtn2 = document.getElementById('openSrcModalBtn');
     const template2 = document.getElementById('dbSourceFormTemplate');
 
@@ -638,4 +939,4 @@ function triggerAgentActivation(agentId) {
 }
 
 </script>
-{% endblock %}
+{% endblock content %}
