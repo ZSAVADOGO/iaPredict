@@ -83,13 +83,25 @@ def generate_response(message, system_instruction=None):
     for key in RESPONSES:
         if key in msg:
             # Retourne un dictionnaire pour garder une structure cohérente
-            return {"status": "success", "text": RESPONSES[key], "agent_name": "Système"}
+            return {
+                "status": "success", 
+                "type": "chat",  # 🟢 Spécifie qu'il s'agit de texte et non de SQL
+                "text": RESPONSES[key], 
+                "agent_name": "Système"}
+        
     try:
         # Appel à l'IA
         ai_reply, agent_name = generate_ai_response(message, system_instruction)
-        #ai_reply, agent_name = generate_response_deepseek(message)
+        ai_reply_clean = ai_reply.strip().lower()
+        
+        # Détection automatique : si la réponse de l'IA ne ressemble pas à du SQL
+        # (ne contient pas select et n'est pas un message '-- IMPOSSIBLE')
+        # alors on la traite comme une réponse de discussion classique.
+        is_sql = "select" in ai_reply_clean or "-- impossible" in ai_reply_clean
+      
         return {
             "status": "success", 
+            "type": "sql" if is_sql else "chat", # 🟢 Tri dynamique du type
             "text": ai_reply, 
             "agent_name": agent_name
         }

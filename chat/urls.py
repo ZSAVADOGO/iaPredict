@@ -33,6 +33,7 @@ urlpatterns = [
     #path('activ_source/', views.activ_source, name='activ_source'),  # Route manquante
     path('activerDb/<int:db_source_id>/', views.activ_source, name='activ_source'),
     path('add_source/', views.add_source, name='add_source'),
+    #path('edit/<int:agent_id>/', views.edit_agent, name='edit_agent'), # Pour la modification
     path('edit_source/<int:pk>/', views.edit_source, name='edit_source'),
     path('delete_source/<int:pk>/', views.delete_source, name='delete_source'),
     #path('test_connect_bdd/<int:pk>/', views.test_connect_bdd, name='test_connect_bdd'),

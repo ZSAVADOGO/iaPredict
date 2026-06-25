@@ -1,34 +1,200 @@
 {% extends "chat/base.html" %}
 {% block content %}
     <!-- Conteneur principal figé à 600px de haut sur ordinateur pour bloquer toute extension infinie -->
-    {% comment %} <div class="w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-4 items-stretch h-auto md:h-[600px] overflow-hidden"> {% endcomment %}
-    {% comment %} <div class="w-full max-w-7xl mx-auto flex flex-col md:flex-row gap-4"> {% endcomment %}
     <div class="container mx-auto flex flex-row gap-4">
-        <!-- ======================================================== -->
+        <!-- COLONNE 3 (À DROITE) : Historique des messages - md:w-3/12 -->
+        <div class="w-full md:w-3/12 bg-white rounded-xl shadow-lg p-4 flex flex-col  h-[600px] md:h-full overflow-hidden">
+            <div class="flex items-center justify-between mb-3 flex-shrink-0">
+                <h3 class="text-lg font-bold text-gray-800">Historique</h3>
+                <form method="POST"
+                      action="{% url 'clear_messages' %}"
+                      onsubmit="return confirm('Tu veux vraiment tout supprimer ? Cette action est irréversible.')"
+                      class="flex-shrink-0">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md transition shadow-sm">
+                        Supprimer tout
+                    </button>
+                </form>
+            </div>
+            <!-- Zone de liste de l'historique défilable interne -->
+            {% comment %} <div id="history-list" class="space-y-3 overflow-y-auto flex-1 min-h-0 pr-1">
+    {% if user_messages %}
+        {# 1. On regroupe les messages de l'utilisateur par jour #}
+        {% regroup user_messages by date_creation|date:"Y-m-d" as messages_par_jour %}
+
+        {% for jour in messages_par_jour %}
+            <!-- Séparateur de Date épuré -->
+            <div class="flex items-center my-3 sticky top-0 bg-white py-1 z-10">
+                <div class="flex-1 border-t border-gray-200"></div>
+                <span class="mx-3 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-gray-100 text-gray-500 rounded-md border border-gray-200 shadow-sm">
+                    {% if jour.grouper == date_aujourdhui %}
+                        Aujourd'hui
+                    {% elif jour.grouper == date_hier %}
+                        Hier
+                    {% else %}
+                        {# Affiche la date ex: 24 Juin 2026 #}
+                        {{ jour.list.0.date_creation|date:"d F Y" }}
+                    {% endif %}
+                </span>
+                <div class="flex-1 border-t border-gray-200"></div>
+            </div>
+
+            <!-- Liste des messages de ce jour précis -->
+            <div class="space-y-2">
+                {% for msg in jour.list %}
+                    <div class="p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:shadow-md cursor-pointer transition-all border border-green-200">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-xs font-semibold text-green-700">Vous</span>
+                            <span class="text-xs text-gray-500">{{ msg.date_creation|date:"H:i" }}</span>
+                        </div>
+                        <p class="text-sm text-gray-700 overflow-hidden" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical">
+                            {{ msg.content }}
+                        </p>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+
+    {% else %}
+        <!-- État vide si aucun message utilisateur -->
+        <div class="text-center text-gray-400 text-sm py-8">
+            <svg class="w-12 h-12 mx-auto mb-2 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+            <p>Aucun message</p>
+        </div>
+    {% endif %}
+            </div> {% endcomment %}
+            <div id="history-list"
+                 class="space-y-4 overflow-y-auto flex-1 min-h-0 pr-1">
+                {% if user_messages %}
+                    {# 1. Regroupement par jour #}
+                    {% regroup user_messages by date_creation|date:"Y-m-d" as messages_par_jour %}
+                    {% for jour in messages_par_jour %}
+                        {% with date_message=jour.list.0.date_creation|date:"Y-m-d" %}
+                            <!-- Séparateur de Date -->
+                            <div class="flex items-center my-3 sticky top-0 bg-white py-1 z-10">
+                                <div class="flex-1 border-t border-gray-200"></div>
+                                <span class="mx-3 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-gray-100 text-gray-500 rounded-md border border-gray-200 shadow-sm">
+                                    {% if date_message == date_aujourdhui %}
+                                        Aujourd'hui
+                                    {% elif date_message == date_hier %}
+                                        Hier
+                                    {% else %}
+                                        {{ jour.list.0.date_creation|date:"d F Y" }}
+                                    {% endif %}
+                                </span>
+                                <div class="flex-1 border-t border-gray-200"></div>
+                            </div>
+                        {% endwith %}
+                        <!-- Conteneur unique sans contours (pas de bordure extérieure, pas de fond) -->
+                        <div class="px-1 space-y-2">
+                            <!-- En-tête unique "Vous" -->
+                            <div class="flex items-center space-x-1.5 pb-1">
+                                <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span>
+                                <span class="text-xs font-bold text-green-700 tracking-wide uppercase">Vous</span>
+                            </div>
+                            <!-- Liste des messages séparés par une ligne -->
+                            <div class="divide-y divide-gray-200">
+                                {% for msg in jour.list %}
+                                    <!-- Ligne de message (Le défilement gère la séparation grâce à 'divide-y') -->
+                                    <div class="group py-2.5 first:pt-0 last:pb-0 hover:bg-gray-50/70 transition-all cursor-pointer rounded-md px-2 -mx-2">
+                                        <div class="flex justify-between items-start space-x-4">
+                                            <p class="text-sm text-gray-600 flex-1 overflow-hidden group-hover:text-gray-900"
+                                               style="display: -webkit-box;
+                                                      -webkit-line-clamp: 2;
+                                                      -webkit-box-orient: vertical">{{ msg.content }}</p>
+                                            <span class="text-[11px] font-medium text-gray-400 group-hover:text-gray-500 whitespace-nowrap pt-0.5">
+                                                {{ msg.date_creation|date:"H:i" }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- État vide -->
+                    <div class="text-center text-gray-400 text-sm py-8">
+                        <svg class="w-12 h-12 mx-auto mb-2 text-gray-300"
+                             fill="none"
+                             stroke="currentColor"
+                             viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+                        </svg>
+                        <p>Aucun message</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
         <!-- COLONNE 1 (À GAUCHE) : Zone de chat principale - md:w-6/12 -->
-        <!-- ======================================================== -->
-        <div id="chat-container" class="w-full md:w-6/12 bg-white rounded-xl shadow-lg flex flex-col  h-[600px] md:h-full overflow-hidden">
-        {% comment %} <div id="chat-container"
-             class="w-full md:w-6/12 bg-white rounded-xl shadow-lg flex flex-col h-[600px] h-full overflow-hidden"> {% endcomment %}
+        <div id="chat-container"
+             class="w-full md:w-6/12 bg-white rounded-xl shadow-lg flex flex-col  h-[600px] md:h-full overflow-hidden">
             <!-- Chat Box : Scrolle en interne si les messages dépassent -->
-            <div id="chat-box" class="flex-1 p-4 overflow-y-auto space-y-4">
+            {% comment %} <div id="chat-box" class="flex-1 p-4 overflow-y-auto space-y-4">
                 {% for msg in messages %}
                     <div class="flex flex-col {% if msg.sender == 'user' %}items-end{% else %}items-start{% endif %} mb-2">
                         <div class="{% if msg.sender == 'user' %} bg-green-200 {% else %} bg-gray-100 {% endif %} text-gray-800 px-4 py-2 rounded-2xl max-w-[70%] msg-container ">
                             {% if msg.content|length > 200 %}
                                 <span class="short-text whitespace-pre-wrap">{{ msg.content|truncatechars:200 }}</span>
                                 <span class="full-text hidden whitespace-pre-wrap">{{ msg.content }}</span>
-                                <button onclick="toggleMessage(this)"
-                                        class="text-blue-600 hover:text-blue-800 text-xs font-semibold mt-1 block focus:outline-none">
+                                <button onclick="toggleMessage(this)" class="text-blue-600 hover:text-blue-800 text-xs font-semibold mt-1 block focus:outline-none">
                                     Voir plus
                                 </button>
                             {% else %}
                                 <p class="whitespace-pre-wrap">{{ msg.content }}</p>
                             {% endif %}
                         </div>
-                        <div class="text-gray-400 text-xs mt-1">{{ msg.timestamp|date:"H:i" }}</div>
+                        <div class="text-gray-400 text-xs mt-1">{{ msg.date_creation|date:"H:i" }}</div>
                     </div>
                 {% endfor %}
+            </div> {% endcomment %}
+            <div id="chat-box" class="flex-1 p-4 overflow-y-auto space-y-4">
+                {% if messages %}
+                    {# 1. On regroupe TOUS les messages de la discussion par jour #}
+                    {% regroup messages by date_creation|date:"Y-m-d" as messages_par_jour %}
+                    {% for jour in messages_par_jour %}
+                        <!-- Séparateur de Date identique à l'historique -->
+                        <div class="flex items-center my-6 sticky top-0 bg-white py-2 z-10">
+                            <div class="flex-1 border-t border-gray-200"></div>
+                            <span class="mx-3 px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-gray-100 text-gray-500 rounded-md border border-gray-200 shadow-sm">
+                                {% if jour.grouper == date_aujourdhui %}
+                                    Aujourd'hui
+                                {% elif jour.grouper == date_hier %}
+                                    Hier
+                                {% else %}
+                                    {# Affiche la date ex: 24 Juin 2026 #}
+                                    {{ jour.list.0.date_creation|date:"d F Y" }}
+                                {% endif %}
+                            </span>
+                            <div class="flex-1 border-t border-gray-200"></div>
+                        </div>
+                        <!-- Conteneur des messages du jour -->
+                        <div class="space-y-4">
+                            {% for msg in jour.list %}
+                                <div class="flex flex-col {% if msg.sender == 'user' %}items-end{% else %}items-start{% endif %} mb-2">
+                                    <div class="{% if msg.sender == 'user' %} bg-green-200 {% else %} bg-gray-100 {% endif %} text-gray-800 px-4 py-2 rounded-2xl max-w-[70%] msg-container ">
+                                        {% if msg.content|length > 200 %}
+                                            <span class="short-text whitespace-pre-wrap">{{ msg.content|truncatechars:200 }}</span>
+                                            <span class="full-text hidden whitespace-pre-wrap">{{ msg.content }}</span>
+                                            <button onclick="toggleMessage(this)"
+                                                    class="text-blue-600 hover:text-blue-800 text-xs font-semibold mt-1 block focus:outline-none">
+                                                Voir plus
+                                            </button>
+                                        {% else %}
+                                            <p class="whitespace-pre-wrap">{{ msg.content }}</p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-gray-400 text-xs mt-1 px-1">{{ msg.date_creation|date:"H:i" }}</div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- Optionnel : État vide si aucune discussion n'a commencé -->
+                    <div class="text-center text-gray-400 text-sm py-12">Commencez la discussion en envoyant un message.</div>
+                {% endif %}
             </div>
             <!-- Loading -->
             <div id="loading"
@@ -53,9 +219,7 @@
                 </form>
             </div>
         </div>
-        <!-- ======================================================== -->
         <!-- COLONNE 2 (AU MILIEU) : Configuration (Sources + Agents) - md:w-3/12 -->
-        <!-- ======================================================== -->
         <div class="w-full md:w-3/12 flex flex-col gap-4  h-[600px] md:h-full overflow-hidden">
             <!-- SECTION A : Sources SQL (Exactement la moitié moins la marge) -->
             <div class="bg-white rounded-xl shadow-lg p-4">
@@ -123,52 +287,6 @@
                 </div>
             </div>
         </div>
-        <!-- ======================================================== -->
-        <!-- COLONNE 3 (À DROITE) : Historique des messages - md:w-3/12 -->
-        <!-- ======================================================== -->
-        <div class="w-full md:w-3/12 bg-white rounded-xl shadow-lg p-4 flex flex-col  h-[600px] md:h-full overflow-hidden">
-            <div class="flex items-center justify-between mb-3 flex-shrink-0">
-                <h3 class="text-lg font-bold text-gray-800">Historique</h3>
-                <form method="POST"
-                      action="{% url 'clear_messages' %}"
-                      onsubmit="return confirm('Tu veux vraiment tout supprimer ? Cette action est irréversible.')"
-                      class="flex-shrink-0">
-                    {% csrf_token %}
-                    <button type="submit"
-                            class="text-xs bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded-md transition shadow-sm">
-                        Supprimer tout
-                    </button>
-                </form>
-            </div>
-            <!-- Zone de liste de l'historique défilable interne -->
-            {% comment %} Fin de la liste d'historique. {% endcomment %}
-            <div id="history-list" class="space-y-2 overflow-y-auto flex-1">
-                {% if user_messages %}
-                    {% for msg in user_messages %}
-                        <div class="p-3 bg-gradient-to-r from-green-50 to-green-100 rounded-lg hover:shadow-md cursor-pointer transition-all border border-green-200">
-                            <div class="flex justify-between items-start mb-1">
-                                <span class="text-xs font-semibold text-green-700">Vous</span>
-                                <span class="text-xs text-gray-500">{{ msg.timestamp|date:"d/m H:i" }}</span>
-                            </div>
-                            <p class="text-sm text-gray-700 overflow-hidden"
-                               style="display: -webkit-box;
-                                      -webkit-line-clamp: 2;
-                                      -webkit-box-orient: vertical">{{ msg.content }}</p>
-                        </div>
-                    {% endfor %}
-                {% else %}
-                    <div class="text-center text-gray-400 text-sm py-8">
-                        <svg class="w-12 h-12 mx-auto mb-2 text-gray-300"
-                             fill="none"
-                             stroke="currentColor"
-                             viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
-                        </svg>
-                        <p>Aucun message</p>
-                    </div>
-                {% endif %}
-            </div>
-        </div>
     </div>
     <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -232,81 +350,120 @@ document.addEventListener('DOMContentLoaded', () => {
         scrollToBottom();
     };
 
-/*
-// BON MAIS VEUT AMELIORER
-    const createTable = (data) => {
-        if (!data || !data.length) {
-            createMessageBubble("Aucun résultat trouvé.");
-            return;
+    
+    const createTable = (data, sqlGenere = "", dbsUtilisees = "") => {
+    if (!data || !data.length) {
+        createMessageBubble("Aucun résultat trouvé.");
+        return;
+    }
+
+    const wrapper = document.createElement("div");
+    wrapper.className = "flex flex-col items-start mb-2 w-full";
+
+    const bubble = document.createElement("div");
+    bubble.className = "bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl max-w-[85%] w-full";
+
+    // ID unique requis pour l'export Excel
+    const timestampId = "table_" + Date.now();
+
+    // ==========================================================
+    // 🟢 EN-TÊTE TECHNIQUE MINIATURE + BOUTON EXPORT COMPACT
+    // ==========================================================
+    if (dbsUtilisees || sqlGenere) {
+        const testContainer = document.createElement('div');
+        testContainer.className = "mb-2 pb-1.5 border-b border-gray-200 text-[10px] text-gray-400 font-sans space-y-1";
+
+        // Ligne flexible pour regrouper le nom des bases et le bouton Export miniature
+        const topRow = document.createElement('div');
+        topRow.className = "flex justify-between items-center w-full gap-2";
+
+        if (dbsUtilisees) {
+            const dbSpan = document.createElement('span');
+            dbSpan.className = "font-medium truncate";
+            dbSpan.innerHTML = `Base(s) : <span class="text-teal-600 font-semibold font-mono bg-teal-50 px-1 py-0.5 rounded border border-teal-100">${dbsUtilisees}</span>`;
+            topRow.appendChild(dbSpan);
         }
 
-        // wrapper IDENTIQUE au message system
-        const wrapper = document.createElement("div");
-        wrapper.className = "flex flex-col items-start mb-2";
+     // --- BOUTON EXPORT EXCEL MINIATURE ET SÉCURISÉ ---
+const exportBtn = document.createElement('a');
+// 🟢 Sécurité absolue : L'URL ne contient plus aucun code SQL modifiable
+exportBtn.href = `{% url 'get_response' %}?export=excel`;
+exportBtn.target = "_blank"; 
+exportBtn.className = "flex items-center gap-1 text-[10px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 border border-emerald-200/60 rounded px-1.5 py-0.5 transition-colors cursor-pointer shrink-0";
+exportBtn.innerHTML = `
+    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+    </svg>
+    Export
+`;
 
-        const bubble = document.createElement("div");
-        bubble.className = "bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl max-w-[85%]";
+        topRow.appendChild(exportBtn);
+        testContainer.appendChild(topRow);
 
-        const tableWrapper = document.createElement("div");
-        tableWrapper.className = "overflow-auto max-h-80";
+        // Affichage miniature de la requête SQL générée
+        if (sqlGenere) {
+            const sqlSpan = document.createElement('span');
+            sqlSpan.className = "block text-gray-500 whitespace-pre-wrap font-mono bg-gray-50 p-1.5 rounded border border-gray-200 mt-1 text-[9px] leading-tight select-all";
+            sqlSpan.textContent = sqlGenere;
+            testContainer.appendChild(sqlSpan);
+        }
 
-        const table = document.createElement("table");
-        table.className = "min-w-full border-separate border-spacing-0 text-sm";
+        bubble.appendChild(testContainer);
+    }
 
-        const thead = document.createElement("thead");
-        const headerRow = document.createElement("tr");
+    // ==========================================
+    // 📊 TABLEAU DE DONNÉES (Inchangé)
+    // ==========================================
+    const tableWrapper = document.createElement("div");
+    tableWrapper.className = "overflow-auto max-h-80";
 
-        Object.keys(data[0]).forEach(col => {
+    const table = document.createElement("table");
+    table.id = timestampId; // Liaison avec le script d'export
+    table.className = "min-w-full border-separate border-spacing-0 text-sm";
 
-            const th = document.createElement("th");
-            th.className = "border px-3 py-2 bg-indigo-100 text-indigo-700 font-semibold text-left";
+    const thead = document.createElement("thead");
+    const headerRow = document.createElement("tr");
 
-            th.textContent = col;
+    Object.keys(data[0] || {}).forEach(col => {
+        const th = document.createElement("th");
+        th.className = "border px-3 py-2 bg-indigo-100 text-indigo-700 font-semibold text-left";
+        th.textContent = col;
+        headerRow.appendChild(th);
+    });
 
-            headerRow.appendChild(th);
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+
+    const tbody = document.createElement("tbody");
+    data.forEach((row, i) => {
+        const tr = document.createElement("tr");
+        tr.className = i % 2 === 0 ? "bg-gray-50" : "bg-white";
+
+        Object.values(row).forEach(value => {
+            const td = document.createElement("td");
+            td.className = "border px-3 py-2 text-gray-800";
+            td.textContent = value;
+            tr.appendChild(td);
         });
+        tbody.appendChild(tr);
+    });
 
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
+    table.appendChild(tbody);
+    tableWrapper.appendChild(table);
+    bubble.appendChild(tableWrapper);
 
-        const tbody = document.createElement("tbody");
+    const time = document.createElement("div");
+    time.className = "text-gray-400 text-xs mt-1";
+    time.textContent = getTime();
 
-        data.forEach((row, i) => {
+    wrapper.appendChild(bubble);
+    wrapper.appendChild(time);
 
-            const tr = document.createElement("tr");
-            tr.className = i % 2 === 0 ? "bg-gray-50" : "bg-white";
+    chatBox.appendChild(wrapper);
+    scrollToBottom();
+};
 
-            Object.values(row).forEach(value => {
-
-                const td = document.createElement("td");
-                td.className = "border px-3 py-2 text-gray-800";
-                td.textContent = value;
-
-                tr.appendChild(td);
-
-            });
-
-            tbody.appendChild(tr);
-
-        });
-
-        table.appendChild(tbody);
-
-        tableWrapper.appendChild(table);
-        bubble.appendChild(tableWrapper);
-
-        const time = document.createElement("div");
-        time.className = "text-gray-400 text-xs mt-1";
-        time.textContent = getTime();
-
-        wrapper.appendChild(bubble);
-        wrapper.appendChild(time);
-
-        chatBox.appendChild(wrapper);
-
-        scrollToBottom();
-    };*/
-
+/* Bon mais veut ajouter un bouton export
 const createTable = (data, sqlGenere = "", dbsUtilisees = "") => {
     if (!data || !data.length) {
         createMessageBubble("Aucun résultat trouvé.");
@@ -320,9 +477,8 @@ const createTable = (data, sqlGenere = "", dbsUtilisees = "") => {
     const bubble = document.createElement("div");
     bubble.className = "bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl max-w-[85%] w-full";
 
-    // ==========================================
     // 🟢 EN-TÊTE TECHNIQUE MINIATURE (Pour tests)
-    // ==========================================
+
     if (dbsUtilisees || sqlGenere) {
         const testContainer = document.createElement('div');
         testContainer.className = "mb-2 pb-1.5 border-b border-gray-200 text-[10px] text-gray-400 font-sans space-y-0.5";
@@ -346,9 +502,8 @@ const createTable = (data, sqlGenere = "", dbsUtilisees = "") => {
         bubble.appendChild(testContainer);
     }
 
-    // ==========================================
     // 📊 TABLEAU DE DONNÉES (Inchangé)
-    // ==========================================
+
     const tableWrapper = document.createElement("div");
     tableWrapper.className = "overflow-auto max-h-80";
 
@@ -388,9 +543,8 @@ const createTable = (data, sqlGenere = "", dbsUtilisees = "") => {
     tableWrapper.appendChild(table);
     bubble.appendChild(tableWrapper);
 
-    // ==========================================
     // ORELOGE ET FIN DU WRAPPER
-    // ==========================================
+
     const time = document.createElement("div");
     time.className = "text-gray-400 text-xs mt-1";
     time.textContent = getTime();
@@ -400,10 +554,9 @@ const createTable = (data, sqlGenere = "", dbsUtilisees = "") => {
 
     chatBox.appendChild(wrapper);
     scrollToBottom();
-};
+};*/
 
 
-    // Bouton SUBMIT du formulaire de chat
     // Bouton SUBMIT du formulaire de chat
 form.addEventListener('submit', function(e){
     e.preventDefault();
@@ -436,9 +589,8 @@ form.addEventListener('submit', function(e){
     .then(data => {
         loading.classList.add('hidden');
 
-        // =======================================================
         // 🟢 INTERCEPTION PRIORITAIRE DES ERREURS PROPRES DU SERVEUR
-        // =======================================================
+
         if (data.status === "error" || data.type === "error") {
             const txtErreur = data.message || data.data || "Une erreur inconnue est survenue.";
             
@@ -452,9 +604,7 @@ form.addEventListener('submit', function(e){
             return; // Arrêt immédiat
         }
 
-        // =======================================================
         // TRAITEMENT DES CAS DE SUCCÈS
-        // =======================================================
 
         // 1. Cas : Aucun agent sélectionné (Bascule sur secours)
         if (data.type === "no_agent") {
@@ -492,72 +642,6 @@ form.addEventListener('submit', function(e){
         console.error(err);
     });
 });
-
-    /* Bon mais veut optimser pour les erreurs
-        form.addEventListener('submit', function(e){
-        e.preventDefault();
-
-        const msg = messageInput.value.trim();
-        if (!msg) return;
-
-        createMessageBubble(msg, "user");
-        messageInput.value = "";
-
-        loading.classList.remove('hidden');
-
-        fetch("{% url 'get_response' %}", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                'X-CSRFToken': '{{ csrf_token }}'
-            },
-            body: new URLSearchParams({message: msg})
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("Erreur serveur");
-            }
-            return response.json();
-        })
-        .then(data => {
-            loading.classList.add('hidden');
-            // 1. Cas : Aucun agent sélectionné (Bascule sur secours)
-            if (data.type === "no_agent") {
-                // Affiche l'alerte d'avertissement Swal
-                alertInfo(data.data + " Utilisation de l'assistant par défaut.");
-                // Affiche quand même la réponse texte générée par le modèle de secours
-                createMessageBubble(data.text || data.data, "system");
-            }
-            // 2. Cas : Requête SQL réussie
-            else if (data.type === "sql") {
-                createTable(data.data);
-            // 🟢 On passe le tableau, la requête SQL et le nom des bases utilisées
-            //createTable(data.data, data.sql_genere, data.dbs_utilisees); 
-            }
-            // 3. Cas : Réponse Chat réussie (Agent actif trouvé)
-            else if (data.type === "chat") {
-                // Optionnel : Décommenter la ligne suivante pour afficher une alerte confirmant l'agent
-                // alertAgent(data.agent_name); 
-                createMessageBubble(data.data, "system");
-            }
-            // 4. Cas : Erreurs gérées par le serveur
-            else if (data.type === "error") {
-                alertError(data.data);
-                createMessageBubble("⚠ " + data.data, "system");
-            }
-            // 5. Cas : Sécurité pour types inconnus
-            else {
-                createMessageBubble("Réponse inattendue.");
-                console.log("Données reçues inconnues :", data);
-            }
-        })
-        .catch(err => {
-            loading.classList.add('hidden');
-            alertError("Impossible de joindre le serveur.");
-            createMessageBubble("Erreur de communication serveur.");
-            console.error(err);
-        });
-    });*/
 
     
 });

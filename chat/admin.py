@@ -11,5 +11,5 @@ class ResponseAdmin(admin.ModelAdmin):
 
 @admin.register(Message_Ai)
 class MessageAdmin(admin.ModelAdmin):
-    list_display = ('sender', 'content', 'timestamp')
-    list_filter = ('sender', 'timestamp')
+    list_display = ('sender', 'content', 'date_creation')
+    list_filter = ('sender', 'date_creation')

@@ -8,12 +8,12 @@
                 {% if msg.sender == 'user' %}
                     <div class="flex flex-col items-end mb-2">
                         <div class="bg-green-200 text-gray-800 px-4 py-2 rounded-2xl max-w-[70%]">{{ msg.content }}</div>
-                        <div class="text-gray-400 text-xs mt-1">{{ msg.timestamp|date:"H:i" }}</div>
+                        <div class="text-gray-400 text-xs mt-1">{{ msg.date_creation|date:"H:i" }}</div>
                     </div>
                 {% else %}
                     <div class="flex flex-col items-start mb-2">
                         <div class="bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl max-w-[70%]">{{ msg.content }}</div>
-                        <div class="text-gray-400 text-xs mt-1">{{ msg.timestamp|date:"H:i" }}</div>
+                        <div class="text-gray-400 text-xs mt-1">{{ msg.date_creation|date:"H:i" }}</div>
                     </div>
                 {% endif %}
             {% endfor %}

@@ -40,7 +40,7 @@ class Message_agent_ai(models.Model):
     
     sender = models.CharField(max_length=10, choices=sender_choices)
     content = models.TextField()
-    timestamp = models.DateTimeField(auto_now_add=True)
+    date_creation = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.sender}: {self.content[:50]}"
@@ -52,7 +52,7 @@ class Message_Ai(models.Model):
     
     sender = models.CharField(max_length=10, choices=sender_choices)
     content = models.TextField()
-    timestamp = models.DateTimeField(auto_now_add=True)
+    date_creation = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"{self.sender}: {self.content[:50]}"
@@ -108,48 +108,6 @@ class DbSource(models.Model):
         self.is_active = False
         self.save()
 
-    """ def check_connection(self):
-        #Tente une connexion réelle à la base de données selon son type.
-        try:
-            if self.db_type == 'mysql':
-                # Requis : pip install pymysql
-                conn = pymysql.connect(
-                    host=self.host,
-                    port=int(self.port),
-                    user=self.username,
-                    password=self.password,
-                    database=self.database_name,
-                    connect_timeout=5 # Évite de bloquer le serveur trop longtemps
-                )
-                conn.close()
-            elif self.db_type == 'postgres':
-                # Requis : pip install psycopg2-binary
-                conn = psycopg2.connect(
-                    host=self.host,
-                    port=int(self.port),
-                    user=self.username,
-                    password=self.password,
-                    dbname=self.database_name,
-                    connect_timeout=5
-                )
-                conn.close()
-            return True, "Connexion réussie"
-        except Exception as e:
-            # Renvoie False et le message d'erreur simplifié
-            return False, str(e) """
-    
-    """ def activate(self):
-        with transaction.atomic():
-            # Désactiver toutes les autres
-            DbSource.objects.exclude(pk=self.pk).update(
-                is_active=False,
-                status="disconnected"
-            )
-
-            # Activer celle-ci
-            self.is_active = True
-            self.status = "connected"
-            self.save(update_fields=["is_active", "status"]) """
 
     def check_connection(self):
         """Tente une connexion réelle à la base de données selon son type."""

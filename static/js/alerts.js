@@ -1,129 +1,36 @@
-// ===============================
-// MODAL FORMULAIRE AGENT (Sécurisée contre l'erreur .style)
-// ===============================
-/* function openAgentModal(targetUrl = null) {
-    // 1. On cherche le conteneur masqué dans la page
-    const container = document.getElementById('agentFormContainer');
-    if (!container) {
-        console.error("Le conteneur #agentFormContainer est introuvable.");
-        return;
-    }
-
-    // 2. On récupère le vrai formulaire physique
-    const form = container.querySelector('#agentRealForm');
-    if (!form) {
-        console.error("Le formulaire #agentRealForm est introuvable.");
-        return;
-    }
-
-    // Si une URL spécifique est passée (ex: add_agent), on met à jour l'action
-    if (targetUrl) {
-        form.setAttribute('action', targetUrl);
-    }
-
-    // 3. Affichage de l'élément DOM direct dans SweetAlert2
-    Swal.fire({
-        title: form.getAttribute('action').includes('edit_agent') ? "Modifier l'Agent" : "Ajouter un Agent",
-        html: form, // Utilisation de l'objet DOM direct pour éviter les bugs d'IDs fantômes
-        showConfirmButton: false,
-        focusConfirm: false,
-        width: '450px',
-        background: '#ffffff',
-        customClass: {
-            popup: 'rounded-2xl shadow-2xl p-6 font-sans',
-            title: 'text-lg font-semibold text-gray-800 border-b pb-3 mb-4 text-left'
-        },
-        allowOutsideClick: true,
-        willClose: () => {
-            // Sécurité : Remettre le formulaire dans son conteneur masqué à la fermeture
-            container.appendChild(form);
+// =========================================================================
+// EXPORTATION DE TABLEAU HTML VERS UN FICHIER EXCEL (.XLSX)
+// =========================================================================
+window.exportHtmlTableToExcel = function(tableId, filename = "Export_Donnees") {
+    const tableElement = document.getElementById(tableId);
+    if (!tableElement) {
+        if (typeof window.alertError === 'function') {
+            window.alertError("Impossible de trouver le tableau à exporter.");
         }
-    });
-} */
+        return;
+    }
 
-    //Bon mais on veut optimiser
-/*function openEditAgentModal(formHtml, buttonElement) {
-    const agentId = buttonElement.getAttribute('data-id');
-    const agentName = buttonElement.getAttribute('data-name');
-    const agentModel = buttonElement.getAttribute('data-model'); 
-    const agentApiKey = buttonElement.getAttribute('data-api-key');
-    const agentInstruction = buttonElement.getAttribute('data-instruction');
-    const isActive = buttonElement.getAttribute('data-active') === 'true';
-    
-    // Extraction des nouvelles dates
-    const createdAt = buttonElement.getAttribute('data-created');
-    const updatedAt = buttonElement.getAttribute('data-updated');
+    try {
+        // 1. Convertir le tableau HTML visible en objet de feuille de calcul SheetJS
+        const worksheet = XLSX.utils.table_to_sheet(tableElement);
 
-    Swal.fire({
-        title: "Modifier l'Agent",
-        html: formHtml,
-        showConfirmButton: false,
-        focusConfirm: false,
-        width: '450px',
-        background: '#ffffff',
-        customClass: {
-            popup: 'rounded-2xl shadow-2xl p-6'
-        },
-        allowOutsideClick: true,
+        // 2. Créer un nouveau classeur Excel vierge
+        const workbook = XLSX.utils.book_new();
+
+        // 3. Insérer la feuille dans le classeur avec le nom "Résultats"
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Résultats");
+
+        // 4. Générer le fichier et déclencher le téléchargement automatique dans le navigateur
+        XLSX.writeFile(workbook, `${filename}_${new Date().toISOString().slice(0,10)}.xlsx`);
         
-        didOpen: () => {
-            const popup = Swal.getPopup();
-            
-            const form = popup.querySelector('form');
-            if (form) {
-                form.action = `/edit/${agentId}/`;
-            }
-
-            // Injection dynamique des dates
-            const createdSpan = popup.querySelector('#edit_created_at');
-            if (createdSpan) createdSpan.textContent = createdAt || '—';
-
-            const updatedSpan = popup.querySelector('#edit_updated_at');
-            if (updatedSpan) updatedSpan.textContent = updatedAt || '—';
-
-            // Remplissage des autres champs existants
-            const nameInput = popup.querySelector('#edit_name');
-            if (nameInput) nameInput.value = agentName || '';
-
-            const modelInput = popup.querySelector('#edit_model_name');
-            if (modelInput) modelInput.value = agentModel || '';
-
-            const modelInput = popup.querySelector('#api_key');
-            if (modelInput) modelInput.value = agentApiKey || '';
-
-            const instructionInput = popup.querySelector('#edit_system_instruction');
-            if (instructionInput) {
-                if (agentInstruction === "Aucune instruction configurée." || agentInstruction === '""' || !agentInstruction) {
-                    instructionInput.value = '';
-                } else {
-                    instructionInput.value = agentInstruction;
-                }
-            }
-
-            const activeCheckbox = popup.querySelector('#edit_is_active');
-            if (activeCheckbox) activeCheckbox.checked = isActive;
+    } catch (error) {
+        console.error("Erreur d'export Excel :", error);
+        if (typeof window.alertError === 'function') {
+            window.alertError("Une erreur est survenue lors de la génération du fichier Excel.");
         }
-    });
-}
+    }
+};
 
-
-// ===============================
-// MODAL FORMULAIRE AGENT (SweetAlert2)
-// ===============================
-function openAgentModal(formHtml) {
-    Swal.fire({
-        title: formHtml.includes('edit_agent') ? "Modifier l'Agent" : "Ajouter un Agent",
-        html: formHtml, // Injection de votre formulaire Django
-        showConfirmButton: false, // On masque le bouton de base de Swal car votre formulaire a son propre bouton
-        focusConfirm: false,
-        width: '450px',
-        background: '#ffffff',
-        customClass: {
-            popup: 'rounded-2xl shadow-2xl p-6'
-        },
-        allowOutsideClick: true
-    });
-}*/
 
 // =========================================================================
 // 1. FONCTION GLOBALE POUR LA MODIFICATION (Avec extraction et pré-remplissage)
@@ -192,6 +99,74 @@ window.openEditAgentModal = function(formHtml, buttonElement) {
 // FONCTION GLOBALE POUR LA MODIFICATION D'UNE SOURCE DE DONNÉES (DbSource)
 // =========================================================================
 window.openEditDbSourceModal = function(formHtml, buttonElement) {
+    // 1. Extraction de toutes les propriétés depuis le bouton cliqué
+    const dbId = buttonElement.getAttribute('data-id');
+    const dbName = buttonElement.getAttribute('data-name');
+    const dbType = buttonElement.getAttribute('data-type');
+    const dbHost = buttonElement.getAttribute('data-host');
+    const dbPort = buttonElement.getAttribute('data-port');
+    const dbDatabaseName = buttonElement.getAttribute('data-dbname');
+    const dbUser = buttonElement.getAttribute('data-user');
+    const createdAt = buttonElement.getAttribute('data-created');
+    const updatedAt = buttonElement.getAttribute('data-updated');
+
+    // 2. Déclenchement de la modale SweetAlert2
+    Swal.fire({
+        title: "Modifier la Source de Données",
+        html: formHtml,
+        showConfirmButton: false,
+        focusConfirm: false,
+        width: '500px',
+        background: '#ffffff',
+        customClass: {
+            popup: 'rounded-2xl shadow-2xl p-6'
+        },
+        allowOutsideClick: true,
+        
+        // 3. Remplissage des configurations dans le DOM de la modale active
+        didOpen: () => {
+            const popup = Swal.getPopup();
+            
+            // Mutation dynamique de l'action du formulaire Django
+            const form = popup.querySelector('form');
+            if (form) {
+                form.action = `/edit_source/${dbId}/`; 
+            }
+
+            // Remplissage des dates de métadonnées
+            const createdSpan = popup.querySelector('.js-edit-created');
+            if (createdSpan) createdSpan.textContent = createdAt || '—';
+
+            const updatedSpan = popup.querySelector('.js-edit-updated');
+            if (updatedSpan) updatedSpan.textContent = updatedAt || '—';
+
+            // Remplissage des champs de saisie (Inputs)
+            const nameInput = popup.querySelector('.js-edit-name');
+            if (nameInput) nameInput.value = dbName || '';
+
+            const typeSelect = popup.querySelector('.js-edit-type');
+            if (typeSelect) typeSelect.value = dbType || 'mysql';
+
+            const hostInput = popup.querySelector('.js-edit-host');
+            if (hostInput) hostInput.value = dbHost || '';
+
+            const portInput = popup.querySelector('.js-edit-port');
+            if (portInput) portInput.value = dbPort || '';
+
+            const dbNameInput = popup.querySelector('.js-edit-dbname');
+            if (dbNameInput) dbNameInput.value = dbDatabaseName || '';
+
+            const userInput = popup.querySelector('.js-edit-username');
+            if (userInput) userInput.value = dbUser || '';
+
+            // Gestion sécurisée du mot de passe (on le force à vide à l'ouverture)
+            const passwordInput = popup.querySelector('.js-edit-password');
+            if (passwordInput) passwordInput.value = '';
+        }
+    });
+};
+
+/*window.openEditDbSourceModal = function(formHtml, buttonElement) {
     // 1. Extraction de toutes les propriétés du modèle DbSource
     const dbId = buttonElement.getAttribute('data-id');
     const dbName = buttonElement.getAttribute('data-name');
@@ -257,7 +232,7 @@ window.openEditDbSourceModal = function(formHtml, buttonElement) {
             if (passwordInput) passwordInput.value = '';
         }
     });
-};
+};*/
 
 
 // =========================================================================
@@ -525,73 +500,6 @@ window.alertLoading = function(message = "Chargement...") {
     });
 };
 
-/* // ALERT SUCCESS
-function alertSuccess(message = "Opération réussie") {
-    Swal.fire({
-        icon: 'success',
-        title: 'Succès',
-        text: message,
-        confirmButtonColor: '#3085d6'
-    });
-}
-
-// ===============================
-// ALERT ERROR
-// ===============================
-
-function alertError(message = "Une erreur est survenue") {
-    Swal.fire({
-        icon: 'error',
-        title: 'Erreur',
-        text: message,
-        confirmButtonColor: '#d33'
-    });
-}
-
-// ===============================
-// ALERT INFO
-// ===============================
-
-function alertInfo(message = "Information") {
-    Swal.fire({
-        icon: 'info',
-        title: 'Information',
-        text: message
-    });
-}
-
-// ===============================
-// ALERT WARNING
-// ===============================
-
-function alertWarning(message = "Attention") {
-    Swal.fire({
-        icon: 'warning',
-        title: 'Attention',
-        text: message
-    });
-}
-
-// ===============================
-// CONFIRM DELETE
-// ===============================
-
-function confirmDelete(callback) {
-    Swal.fire({
-        title: 'Supprimer ?',
-        text: "Cette action est irréversible",
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Oui supprimer',
-        cancelButtonText: 'Annuler'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            callback();
-        }
-    });
-} */
 
 // ===============================
 // ALERT LOADING

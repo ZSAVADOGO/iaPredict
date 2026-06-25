@@ -1,7 +1,8 @@
 #from pyexpat.errors import messages
 from django.contrib import messages
 from django.shortcuts import render
-from django.http import JsonResponse
+import openpyxl
+from django.http import HttpResponse, JsonResponse
 import requests
 from .models import Agent, Message_Ai, Message_agent_ai
 from .responses_ai import generate_response, generate_ai_response
@@ -12,8 +13,16 @@ from django.views.decorators.http import require_POST
 from django.db import connection, transaction,utils
 
 import re
-import datetime
+#import datetime
 from django.views.decorators.csrf import csrf_exempt
+
+from django.db import router
+import logging
+# Configuration d'un logger interopérable
+logger = logging.getLogger(__name__)
+
+from datetime import datetime, timedelta
+from django.shortcuts import render
 
 from .models import DbSource
 from .forms import DataSourceForm
@@ -24,37 +33,6 @@ from django.http import JsonResponse
 
 import pymysql
 import psycopg2
-
-
-
-""" def get_agent_api_response(request):
-    if request.method == "POST":
-        user_input = request.POST.get('message')
-        # On enregistre toujours l'entrée utilisateur
-        Message_agent_ai.objects.create(sender="user", content=user_input)
-        try:
-            ai_response = generate_ai_response(user_input)  
-            # Enregistrement du succès
-            Message_agent_ai.objects.create(sender="system", content=ai_response)
-            return JsonResponse({'content': ai_response}) 
-        except Exception as e:
-            #error_text = str(e)
-            #print(f"ERREUR CAPTURÉE : {error_text}")
-            # APPEL AU FICHIER CENTRAL
-            error_text = format_openai_error(e)
-            print(f"ERREUR CENTRALE: {error_text}")
-
-            # OPTIONNEL : Enregistrer l'erreur en BDD pour savoir que l'IA a échoué
-            Message_agent_ai.objects.create(
-                sender="system", 
-                content=f"Erreur : {error_text}"
-            )
-
-            return JsonResponse({'error': error_text}, status=500) """
-
-        
-        
-
 
 
 # En mode TEST
@@ -119,40 +97,6 @@ def test_connect_bdd(request):
             "success": False,
             "message": f"Erreur système : {str(e)}"
         }, status=500)
-    
-""" def test_connect_bdd(request, pk):
-    source = get_object_or_404(DbSource, pk=pk)
-
-    try:
-        if source.db_type == "mysql":
-            pymysql.connect(
-                host=source.host,
-                user=source.username,
-                password=source.password,
-                database=source.database_name,
-                port=source.port
-            )
-        elif source.db_type == "postgres":
-            psycopg2.connect(
-                host=source.host,
-                user=source.username,
-                password=source.password,
-                dbname=source.database_name,
-                port=source.port
-            )
-
-        source.status = "connected"
-    except Exception:
-        source.status = "error"
-
-    print(f"DEBUG: source.status mis à jour -> {source.status}") 
-    print(f"DEBUG: source.is_active -> {source.is_active}")
-    print(f"DEBUG: source -> {source}")
-
-    source.save()
-    return redirect("parametre") """
-
-    
 
 def de_connect_bdd(request, pk):
     source = get_object_or_404(DbSource, pk=pk)
@@ -165,15 +109,16 @@ def de_connect_bdd(request, pk):
     })
 
 def is_sql_query(message):
-    sql_keywords = ["select", "insert", "update", "delete"]
+    #sql_keywords = ["select", "insert", "update", "delete"]
+    sql_keywords = ["select"]
     msg = message.lower().strip()
     return any(msg.startswith(word) for word in sql_keywords)
 
-def validate_query(sql):
+""" def validate_query(sql):
     sql = sql.strip().lower()
     if not sql.startswith("select"):
         raise ValueError("Seules les requêtes SELECT sont autorisées.")
-    return sql
+    return sql """
 
 def open_connection(source):
     if source.db_type == "mysql":
@@ -198,202 +143,83 @@ def open_connection(source):
     else:
         raise ValueError("Type de base non supporté")
 
-""" def get_response(request):
+""" def run_query(source, sql):
+      # 1. Nettoyage initial et retrait du point-virgule final
+    sql = sql.strip().rstrip(";")
+    sql_clean_lower = sql.lower()
 
-    if request.method != "POST":
-        return JsonResponse({"type": "error", "data": "Requête invalide"}, status=400)
+    # =======================================================
+    # 🚨 BLINDAGE DE SÉCURITÉ AUTONOME (Scanner de Tokens)
+    # =======================================================
+    #mots_extraits = set(re.findall(r"\w+", sql_clean_lower))
+    mots_extraits = set(re.findall(r'\b[a-z_]+\b', sql_clean_lower))
+    commandes_interdites = {
+        "delete", "update", "drop", "truncate", "alter", 
+        "insert", "create", "grant", "replace"
+    }
 
-    user_msg = request.POST.get("message", "").strip()
+    sql_pour_premier_mot = sql_clean_lower.lstrip("() ")
+    premier_mot = sql_pour_premier_mot.split()[0] if sql_pour_premier_mot.split() else ""
+
+    if (
+        ";" in sql
+        or premier_mot != "select"
+        or mots_extraits.intersection(commandes_interdites)
+    ):
+        raise PermissionError(
+            "Action non autorisée : Cette méthode accepte exclusivement une unique instruction SELECT."
+        )
+
+    # =======================================================
+    # 📊 BRIDAGE AUTOMATIQUE DU VOLUME (Interopérabilité LIMIT)
+    # =======================================================
+    # Détection du type de moteur à partir de l'objet source (ex: source.vendor ou source.db_type)
+    # On suppose que l'objet 'source' possède un attribut indiquant son moteur de base de données.
+    moteur = getattr(source, "db_type", "default").lower()
+
+    if "limit" not in sql_clean_lower and "top " not in sql_clean_lower and "fetch " not in sql_clean_lower:
+        if "oracle" in moteur:
+            sql += " FETCH FIRST 50 ROWS ONLY"
+        elif "mssql" in moteur or "sqlserver" in moteur:
+            # Pour SQL Server, l'ajout d'un TOP requiert une modification en début de chaîne
+            sql = re.sub(r"^\s*select\s+", "SELECT TOP 50 ", sql, flags=re.IGNORECASE)
+        else:
+            # Standard pour PostgreSQL, MySQL, SQLite
+            sql += " LIMIT 50"
+
+    # =======================================================
+    # ⚡ EXÉCUTION ET SÉRIALISATION UNIVERSELLE
+    # =======================================================
+    logger.info(f"Exécution SQL sur la source '{source.name}' ({moteur})")
     
-    # Équivalent de console.log(user_msg)
-    print(f"DEBUG: user_msg reçu -> {user_msg}") 
-
-    if not user_msg:
-        return JsonResponse({"type": "error", "data": "Message vide"}, status=400)
-
-    Message_Ai.objects.create(sender="user", content=user_msg)
-
-    source = DbSource.objects.filter(is_active=True).first()
-
-    print(f"DEBUG: 1 Etat source -> {source}")
-    print(f"DEBUG: 2 Etat source -> {source.database_name}")
-    print(f"DEBUG: 3 Etat source -> {source.db_type}")
-
-    try:
-        #if source and is_sql_query(user_msg):
-        if is_sql_query(user_msg):
-            result = run_query(source, user_msg)
-
-            response = {
-                "type": "sql",
-                "data": result,
-                "count": len(result)
-            }
-
-        else:
-            response = {
-                "type": "chat",
-                "data": generate_response(user_msg)
-            }
-
-    except Exception as e:
-        response = {
-            "type": "error",
-            "data": str(e)
-        }
-# Équivalent de console.log(user_msg)
-#    print(f"DEBUG: response retouner -> {response}") 
-
-    Message_Ai.objects.create(sender="system", content=str(response))
-# Récupérer uniquement les messages utilisateur pour l'historique (les plus récents d'abord)
-    #user_messages = Message_Ai.objects.filter(sender='user').order_by('-timestamp')
-    return JsonResponse(response) """
-
-
-def get_response(request):
-    if request.method != "POST":
-        return JsonResponse({"type": "error", "data": "Requête invalide"}, status=400)
-
-    user_msg = request.POST.get("message", "").strip()
-    print(f"DEBUG: user_msg reçu -> {user_msg}") 
-
-    if not user_msg:
-        return JsonResponse({"type": "error", "data": "Message vide"}, status=400)
-
-    # Sauvegarde du message de l'utilisateur
-    Message_Ai.objects.create(sender="user", content=user_msg)
-
-    source = DbSource.objects.filter(is_active=True).first()
-    print(f"DEBUG: Etat source -> {source}")
-
-    try:
-        # Sécurité : On vérifie qu'une source existe AVANT de tester si c'est une requête SQL
-        if source and is_sql_query(user_msg):
-            result = run_query(source, user_msg)
-            response_data = {
-                "type": "sql",
-                "data": result,
-                "count": len(result),
-                "agent_name": "Base de données"
-            }
-            # Sauvegarde du résultat en texte propre
-            Message_Ai.objects.create(sender="system", content=f"SQL Result: {len(result)} lignes.")
-
-        else:
-            # generate_response retourne désormais : {"status": "...", "text": "...", "agent_name": "..."}
-            chat_result = generate_response(user_msg)
+    # open_connection doit être capable de lire la structure de votre objet source
+    with open_connection(source) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(sql)
             
-            if chat_result.get("status") == "no_agent":
-                response_data = {
-                    "type": "no_agent",
-                    "data": chat_result.get("message"),
-                    "agent_name": "Système"
-                }
-            elif chat_result.get("status") == "error":
-                response_data = {
-                    "type": "error",
-                    "data": chat_result.get("message"),
-                    "agent_name": "Système"
-                }
+            # Gestion universelle de la description des colonnes
+            if cursor.description:
+                columns = [col[0] for col in cursor.description]
             else:
-                response_data = {
-                    "type": "chat",
-                    "data": chat_result.get("text"), # Extraction du texte brut pour le JS
-                    "agent_name": chat_result.get("agent_name", "Inconnu") # Transmission du nom de l'agent
-                }
-            
-            # Sauvegarde du texte brut de l'IA en base de données
-            Message_Ai.objects.create(sender="system", content=response_data["data"])
+                return []
+                
+            rows = cursor.fetchall()
 
-        return JsonResponse(response_data)
+    cleaned_rows = []
 
-    except Exception as e:
-        print(f"DEBUG ERROR: {str(e)}")
-        error_msg = f"Erreur système : {str(e)}"
-        Message_Ai.objects.create(sender="system", content=error_msg)
-        
-        return JsonResponse({
-            "type": "error",
-            "data": error_msg,
-            "agent_name": "Système"
-        }, status=500)
-    
-
-# BON MAIS VEUT OPTIMISER
-""" def get_response(request):
-    if request.method != "POST":
-        return JsonResponse({"type": "error", "data": "Requête invalide"}, status=400)
-
-    user_msg = request.POST.get("message", "").strip()
-    print(f"DEBUG: user_msg reçu -> {user_msg}") 
-
-    if not user_msg:
-        return JsonResponse({"type": "error", "data": "Message vide"}, status=400)
-
-    # Sauvegarde du message de l'utilisateur
-    Message_Ai.objects.create(sender="user", content=user_msg)
-
-    source = DbSource.objects.filter(is_active=True).first()
-    print(f"DEBUG: Etat source -> {source}")
-
-    try:
-        # Sécurité : On vérifie qu'une source existe AVANT de tester si c'est une requête SQL
-        if source and is_sql_query(user_msg):
-            result = run_query(source, user_msg)
-            response_data = {
-                "type": "sql",
-                "data": result,
-                "count": len(result),
-                "agent_name": "Base de données"
-            }
-            # Sauvegarde du résultat en texte propre
-            Message_Ai.objects.create(sender="system", content=f"SQL Result: {len(result)} lignes.")
-
-        else:
-            # generate_response retourne désormais : {"status": "...", "text": "...", "agent_name": "..."}
-            chat_result = generate_response(user_msg)
-            
-            if chat_result.get("status") == "no_agent":
-                response_data = {
-                    "type": "no_agent",
-                    "data": chat_result.get("message"),
-                    "agent_name": "Système"
-                }
-            elif chat_result.get("status") == "error":
-                response_data = {
-                    "type": "error",
-                    "data": chat_result.get("message"),
-                    "agent_name": "Système"
-                }
+    # Sérialisation robuste : décode les octets (bytes) et gère les formats selon les moteurs
+    for row in rows:
+        cleaned_row = []
+        for value in row:
+            if isinstance(value, bytes):
+                cleaned_row.append(value.decode("utf-8", errors="ignore"))
             else:
-                response_data = {
-                    "type": "chat",
-                    "data": chat_result.get("text"), # Extraction du texte brut pour le JS
-                    "agent_name": chat_result.get("agent_name", "Inconnu") # Transmission du nom de l'agent
-                }
-            
-            # Sauvegarde du texte brut de l'IA en base de données
-            Message_Ai.objects.create(sender="system", content=response_data["data"])
+                cleaned_row.append(value)
+        cleaned_rows.append(dict(zip(columns, cleaned_row)))
 
-        return JsonResponse(response_data)
-
-    except Exception as e:
-        print(f"DEBUG ERROR: {str(e)}")
-        error_msg = f"Erreur système : {str(e)}"
-        Message_Ai.objects.create(sender="system", content=error_msg)
-        
-        return JsonResponse({
-            "type": "error",
-            "data": error_msg,
-            "agent_name": "Système"
-        }, status=500) """
-
-
+    return cleaned_rows """
+#n'est pas operable
 def run_query(source, sql):
-    """
-    Exécute de manière autonome et sécurisée une requête SELECT sur une base distante.
-    Nettoie et sérialise les types complexes (bytes, dates) pour compatibilité JSON.
-    """
     # 1. Nettoyage initial et retrait du point-virgule final
     sql = sql.strip().rstrip(";")
 
@@ -401,23 +227,34 @@ def run_query(source, sql):
     # 🚨 BLINDAGE DE SÉCURITÉ AUTONOME (Scanner de Tokens)
     # =======================================================
     sql_clean_lower = sql.lower()
-    
+
     # Extraction de chaque mot de manière isolée
-    mots_extraits = set(re.findall(r'\w+', sql_clean_lower))
-    
+    mots_extraits = set(re.findall(r"\w+", sql_clean_lower))
+
     # Liste noire absolue des commandes d'altération
-    commandes_interdites = {"delete", "update", "drop", "truncate", "alter", "insert", "create", "grant"}
-    
-    # Extraction du premier mot
-    premier_mot = sql_clean_lower.split()[0] if sql_clean_lower.split() else ""
-    
+    commandes_interdites = {
+        "delete", "update", "drop", "truncate", "alter", 
+        "insert", "create", "grant"
+    }
+
+    # 🟢 CORRECTION SYNTAXE UNION : On nettoie les parenthèses à gauche avant d'isoler le premier mot
+    sql_pour_premier_mot = sql_clean_lower.lstrip("() ")
+    premier_mot = sql_pour_premier_mot.split()[0] if sql_pour_premier_mot.split() else ""
+
     # Détection des points-virgules internes (tentative d'empilage)
-    if ";" in sql or premier_mot != "select" or mots_extraits.intersection(commandes_interdites):
-        raise PermissionError("Action non autorisée : Cette méthode accepte exclusivement une unique instruction SELECT.")
+    if (
+        ";" in sql
+        or premier_mot != "select"
+        or mots_extraits.intersection(commandes_interdites)
+    ):
+        raise PermissionError(
+            "Action non autorisée : Cette méthode accepte exclusivement une unique instruction SELECT."
+        )
 
     # =======================================================
     # 📊 BRIDAGE AUTOMATIQUE DU VOLUME (LIMIT)
     # =======================================================
+    # On applique le LIMIT uniquement s'il n'est pas déjà défini dans la requête globale
     if "limit" not in sql_clean_lower:
         sql += " LIMIT 50"
 
@@ -431,64 +268,21 @@ def run_query(source, sql):
             rows = cursor.fetchall()
 
     cleaned_rows = []
-    
+
     # Optimisation de la boucle de conversion (Performances accrues)
-    for row in rows:
-        cleaned_row = {}
-        for col_name, value in zip(columns, row):
-            # 1. Gestion des chaînes de octets (BLOB / Binary)
-            if isinstance(value, bytes):
-                cleaned_row[col_name] = value.decode("utf-8", errors="ignore")
-            
-            # 2. Conversion automatique des types Temporels (Évite les crashs JSON)
-            elif isinstance(value, (datetime.datetime, datetime.date, datetime.time)):
-                cleaned_row[col_name] = value.isoformat()
-                
-            # 3. Gestion des autres types standards (int, float, str, None)
-            else:
-                cleaned_row[col_name] = value
-                
-        cleaned_rows.append(cleaned_row)
-
-    return cleaned_rows
-
-# BON MAI VEUT OPTIMISER
-""" def run_query(source, sql):
-    sql = sql.strip().rstrip(";")
-
-    if not sql.lower().startswith("select"):
-        raise ValueError("Seules les requêtes SELECT sont autorisées.")
-
-    if "limit" not in sql.lower():
-        sql += " LIMIT 50"
-
-    with open_connection(source) as conn:
-        with conn.cursor() as cursor:
-            cursor.execute(sql)
-            columns = [col[0] for col in cursor.description]
-            rows = cursor.fetchall()
-
-    cleaned_rows = []
-
     for row in rows:
         cleaned_row = []
         for value in row:
-            # 1. Gestion des chaînes de octets (votre code existant)
             if isinstance(value, bytes):
                 cleaned_row.append(value.decode("utf-8", errors="ignore"))
-            
-            # 2. OPTIMISATION CRITIQUE : Conversion des types Date/Datetime pour éviter le crash JSON
-            elif isinstance(value, (datetime.datetime, datetime.date)):
-                cleaned_row.append(value.isoformat())
-                
             else:
                 cleaned_row.append(value)
-                
-        # Assemblage de la ligne sous forme de dictionnaire propre
         cleaned_rows.append(dict(zip(columns, cleaned_row)))
 
-    return cleaned_rows """
+    return cleaned_rows 
+    
 
+# BON MAI VEUT OPTIMISER
 
 def activ_source(request, db_source_id):
     # 1. Récupération sécurisée de la source cible
@@ -537,16 +331,7 @@ def add_source(request):
     # Si le formulaire n'est pas valide ou en méthode GET
     return render(request, 'chat/parametre.html', {'form': form})
 
-
 """ def edit_source(request, pk):
-    source = get_object_or_404(DbSource, pk=pk)
-    form = DataSourceForm(request.POST or None, instance=source)
-    if form.is_valid():
-        form.save()
-        return redirect("/")
-    return render(request, "chat/add_source.html", {"form": form}) """
-
-def edit_source(request, pk):
     source = get_object_or_404(DbSource, pk=pk)
     form = DataSourceForm(request.POST or None, instance=source)
     if form.is_valid():
@@ -555,7 +340,47 @@ def edit_source(request, pk):
         return redirect('parametre') # Redirige vers vos paramètres
         
     # Si la requête vient du script JS (AJAX), on peut renvoyer un template partiel ou le même
-    return render(request, "chat/add_source.html", {"form": form})
+    return render(request, "chat/add_source.html", {"form": form}) """
+
+
+
+def edit_source(request, pk):
+    # Récupération de la source existante via la clé primaire (pk)
+    source = get_object_or_404(DbSource, pk=pk)
+
+    if request.method == "POST":
+        # Extraction des données du formulaire (identiques aux attributs 'name' du HTML)
+        name = request.POST.get("name")
+        db_type = request.POST.get("db_type")
+        host = request.POST.get("host")
+        port = request.POST.get("port")
+        database_name = request.POST.get("database_name")
+        username = request.POST.get("username")
+        password = request.POST.get("password")
+
+        # Mise à jour des champs de l'objet
+        source.name = name
+        source.db_type = db_type
+        source.host = host
+        source.port = port
+        source.database_name = database_name
+        source.username = username
+
+        # Sécurité : On ne modifie le mot de passe que si l'utilisateur en a saisi un nouveau
+        if password and password.strip() != "":
+            source.password = password
+
+        # Sauvegarde en base de données
+        source.save()
+
+        # Message de succès et redirection
+        messages.success(
+            request, f'La source "{source.name}" a été modifiée avec succès !'
+        )
+        return redirect("parametre")
+
+    # Si la requête est en GET (accès direct à l'URL), on redirige ou affiche les paramètres
+    return render(request, "chat/parametre.html", {"source": source})
 
 
 def delete_source(request, pk):
@@ -588,32 +413,39 @@ def clear_messages(request):
 
 
 def chat_view(request):
-    # Récupérer TOUS les messages pour la conversation principale
-    all_messages = Message_Ai.objects.all().order_by('timestamp')
+    # 1. Préparation des dates pour les badges de l'historique
+    aujourdhui = datetime.now()
+    hier = aujourdhui - timedelta(days=1)
 
-    # Récuperer tous les data sources
-    data_sources = DbSource.objects.all()
+    # 2. Récupérer TOUS les messages pour la zone de chat principale
+    all_messages = Message_Ai.objects.all().order_by('date_creation')
 
-    # Récuperer tous les agents IA et celui actif
-    #agents = Agent.objects.all()
+    # 3. Récuperer tous les data sources triés par statut actif
+    data_sources = DbSource.objects.order_by('-is_active') 
+
+    # 4. Récuperer tous les agents IA et celui actif
     agents = Agent.objects.all().order_by('-date_creation')
     active_agent = Agent.objects.filter(is_active=True).first()
-    data_sources = DbSource.objects.order_by('-is_active') #.order_by('-date_creation') if DbSource.objects.filter(is_active=True).exists() else None
     
-    # Récupérer uniquement les messages utilisateur pour l'historique (les plus récents d'abord)
-    user_messages = Message_Ai.objects.filter(sender='user').order_by('-timestamp')
+    # 5. Récupérer uniquement les messages utilisateur pour l'historique (les plus récents d'abord)
+    user_messages = Message_Ai.objects.filter(sender='user').order_by('-date_creation')
     
+    # 6. Construction du contexte (Inclusion des dates formatées en chaînes)
     context = {
-        'messages': all_messages,  # Pour la zone de chat
-        'user_messages': user_messages,  # Pour l'historique
-        'data_sources': data_sources,  # Pour la gestion des sources
-        'agents_list': agents,  # Pour la gestion des agents IA
-
+        'messages': all_messages,  
+        'user_messages': user_messages,  
+        'data_sources': data_sources,  
+        'agents_list': agents,  
+        'active_agent': active_agent, # Ajouté au cas où vous en auriez besoin dans le template
+        'date_aujourdhui': aujourdhui.strftime('%Y-%m-%d'), # Requis pour le template
+        'date_hier': hier.strftime('%Y-%m-%d'),             # Requis pour le template
     }
+    
     return render(request, 'chat/chat.html', context)
 
+
 def agent_ia_view(request):
-    messages = Message_agent_ai.objects.all().order_by('timestamp')
+    messages = Message_agent_ai.objects.all().order_by('date_creation')
     return render(request, 'chat/agent_ia.html', {'messages': messages})
 
 def index(request):
@@ -647,15 +479,6 @@ def parametre(request):
 
 
 # GErer les agents IA
-
-# 1. Liste des agents & Gestion
-""" def agent_manager(request):
-    agents = Agent.objects.all()
-    active_agent = Agent.objects.filter(is_active=True).first()
-    print(f"DEBUG: liste des agents ia -> {agents}") 
-    print(f"DEBUG: Agents Actifs -> {active_agent}") 
-    return render(request, 'chat/parametre.html', {'agents': agents, 'active_agent': active_agent}) """
-
 # 2. Ajouter ou Modifier un agent
 def save_agent(request, agent_id=None):
     agent = get_object_or_404(Agent, pk=agent_id) if agent_id else None
@@ -690,39 +513,6 @@ def save_agent(request, agent_id=None):
         return redirect('parametre')
         
     return render(request, 'chat/parametre.html', {'agent': agent})
-
-# 1. Modifier un agent
-""" def edit_agent(request, agent_id=None):
-    agent = get_object_or_404(Agent, pk=agent_id) if agent_id else None
-    
-    if request.method == 'POST':
-        name = request.POST.get('name')
-        model_name = request.POST.get('model_name')
-        api_key = request.POST.get('api_key')
-        system_instruction = request.POST.get('system_instruction')
-        is_active = request.POST.get('is_active') == 'on'
-        
-        if agent: # Modification
-            agent.name = name
-            agent.model_name = model_name
-            agent.api_key = api_key
-            agent.system_instruction = system_instruction
-            agent.is_active = is_active
-            agent.save()
-            # Envoi du message à afficher sur la page suivante SWEET ALERT
-            messages.success(request, "Agent modifié avec succès")
-
-        else: # Création
-            Agent.objects.create(
-                name=name, model_name=model_name, api_key=api_key, 
-                system_instruction=system_instruction, is_active=is_active
-                )
-            messages.success(request,"Agent créé avec succès")
-        #return redirect('agent_manager')
-        return redirect('parametre')
-        
-    #return render(request, 'chat/agent_form.html', {'agent': agent, 'choices': Agent.MODEL_CHOICES})
-    return render(request, 'chat/parametre.html', {'agent': agent}) """
 
 def edit_agent(request, agent_id=None):
     # Si agent_id est fourni -> Modification, sinon -> Création
@@ -792,12 +582,6 @@ def delete_agent(request, pk):
         
     return redirect('parametre')
 
-""" def delete_agent(request, agent_id):
-    agent = get_object_or_404(Agent, pk=agent_id)
-    agent.delete()
-    #return redirect('agent_manager')
-    return redirect('parametre') """
-
 # 4. Basculer d'agent actif (Clic rapide)
 def toggle_agent(request, agent_id):
     agent = get_object_or_404(Agent, pk=agent_id)
@@ -813,120 +597,322 @@ def toggle_db_source(request, db_source_id):
     #return redirect('agent_manager')
     return redirect('parametre')
 
-""" @csrf_exempt
+@csrf_exempt
 def recherche_naturelle(request):
+    # =========================================================================
+    # 🔒 INTERCEPTION PRIORITAIRE EXPORT EXCEL VIA SESSION (ZÉRO SQL DANS L'URL)
+    # =========================================================================
+    if request.method == "GET" and request.GET.get("export") == "excel":
+        result_cache = request.session.get("last_sql_result")
+        if not result_cache:
+            return JsonResponse({"type": "error", "data": "Session expirée ou aucun résultat à exporter."}, status=400)
+            
+        try:
+            import openpyxl
+            from django.http import HttpResponse
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Résultats Export"
+            
+            if result_cache and len(result_cache) > 0:
+                ws.append(list(result_cache[0].keys()))
+                for row in result_cache:
+                    ws.append(list(row.values()))
+            
+            response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            response["Content-Disposition"] = 'attachment; filename="export_ia.xlsx"'
+            wb.save(response)
+            return response
+        except Exception as e:
+            return JsonResponse({"type": "error", "data": f"Erreur exportation : {str(e)}"}, status=500)
+
+
     if request.method != "POST":
         return JsonResponse({"type": "error", "data": "Méthode non autorisée"}, status=405)
-
+    
+    user_msg = request.POST.get("message", "").strip()
     phrase_utilisateur = request.POST.get('message', '').strip() or request.POST.get('q', '').strip()
-    
-    print(f"le request ==>  {request}")
-    print(f"La phrase utilisateur ==> {phrase_utilisateur}")
 
-    if not phrase_utilisateur:
-        return JsonResponse({"type": "error", "data": "Requête vide", "agent_name": "Système"}, status=400)
 
-    # ==========================================
-    # 🟢 EXTRACTION ET FUSION DES SCHÉMAS ACTIFS
-    # ==========================================
-    active_dbs = DbSource.objects.filter(is_active=True)
-    db_names_list = [] # 🟢 On crée un petit tableau vide pour stocker les noms
-    if not active_dbs.exists():
-        return JsonResponse({"type": "error", "data": "Aucune base de données active dans les paramètres.", "agent_name": "Système"}, status=400)
-
-    full_schema_text = ""
-    for db in active_dbs:
-        # Utilisation de get_db_schema() comme demandé dans votre schéma
-        full_schema_text += db.get_db_schema() + "\n"
-        db_names_list.append(db.name) # 🟢 On ajoute le nom de la BDD à chaque passage de boucle
-    # ==========================================
-    # 🟢 RÉCUPÉRATION ET INJECTION DU LONG PROMPT
-    # ==========================================
-    # On récupère le premier agent actif qui contient le modèle de prompt dans SQLite
-    agent_config = Agent.objects.filter(is_active=True).first()
-    
-    if agent_config and agent_config.system_instruction:
-        # On remplace dynamiquement la balise par la structure réelle de vos BDD
-        base_prompt = agent_config.system_instruction
-        system_instruction_final = base_prompt.replace("{full_schema_text}", full_schema_text)
-    else:
-        # Prompt de secours au cas où SQLite est vide
-        system_instruction_final = f"Génère du SQL uniquement pour ce schéma :\n{full_schema_text}"
-
-    # ==========================================
-    # 1. OBTIENIR LA RÉPONSE DE L'AGENT
-    # ==========================================
-    # ⚠️ IMPORTANT : Modifiez votre fonction 'generate_response' pour qu'elle accepte l'instruction système
-    chat_result = generate_response(phrase_utilisateur, system_instruction=system_instruction_final)
-    status = chat_result.get("status")
-
-    print(f"Le chat_result ==> {chat_result}")
-    print(f"Le status ==> {status}")
-
-    if status in ["no_agent", "error"]:
-        return JsonResponse({
-            "type": "error" if status == "error" else "no_agent",
-            "data": chat_result.get("message"),
-            "agent_name": "Système"
-        }, status=400 if status == "no_agent" else 500)
+    try:
+        # ==========================================
+        # 🟢 EXTRACTION ET FUSION DES SCHÉMAS ACTIFS
+        # ==========================================
+        db_active_target = router.db_for_read(DbSource)
+        active_dbs = DbSource.objects.using(db_active_target).filter(is_active=True)
+        db_names_list = []
             
-    # 2. Extraction et nettoyage du SQL
-    requete_raw = chat_result.get("text", "").strip()
-    requete_sql = re.sub(r'```sql\s*|```\s*', '', requete_raw).strip()
+        if not active_dbs.exists():
+            return JsonResponse({"type": "error", "data": "Aucune base de données active dans les paramètres.", "agent_name": "Système"}, status=400)
 
-    print(f"Le requete_sql ==> {requete_sql}")
+        full_schema_text = ""
+        for db in active_dbs:
+            full_schema_text += db.get_db_schema() + "\n"
+            db_names_list.append(db.name)
+        source = active_dbs.first() 
+
+        # Sécurité : On vérifie qu'une source existe AVANT de tester si c'est une requête SQL
+        if source and is_sql_query(user_msg):
+            result = run_query(source, user_msg)
+            response_data = {
+                "type": "sql",
+                "data": result,
+                "count": len(result),
+                "agent_name": "Base de données"
+            }
+            # Sauvegarde du résultat en texte propre
+            Message_Ai.objects.create(sender="system", content=f"SQL Result: {len(result)} lignes.")
+
+        else:
     
-    if not requete_sql.lower().startswith("select"):
-        return JsonResponse({"type": "error", "data": "Action non autorisée", "agent_name": "Sécurité"}, status=403)
-        
-    # Choix de la première source pour l'exécution physique
-    source = active_dbs.first() 
-    print(f"La source d'exécution ==> {source}")
+    
+            logger.info(f"Requête reçue | Phrase utilisateur : {phrase_utilisateur}")
 
-    # --- OPTIMISATION CRITIQUE Anti-Lock ---
-    try:
-        with transaction.atomic():
-            Message_Ai.objects.create(
-                sender="system", 
-                content=f"Requête SQL exécutée pour : {phrase_utilisateur}"
-            )
+            if not phrase_utilisateur:
+                return JsonResponse({"type": "error", "data": "Requête vide", "agent_name": "Système"}, status=400)
+
+            # 1. Écriture sécurisée et interopérable du message utilisateur
+            db_msg = router.db_for_write(Message_Ai)
+            try:
+                Message_Ai.objects.using(db_msg).create(sender="user", content=phrase_utilisateur)
+            except Exception as e:
+                logger.error(f"Impossible d'enregistrer le message utilisateur sur {db_msg} : {e}")
+
+            # ==========================================
+            # 🟢 RÉCUPÉRATION ET INJECTION DU LONG PROMPT
+            # ==========================================
+            db_agent_target = router.db_for_read(Agent)
+            agent_config = Agent.objects.using(db_agent_target).filter(is_active=True).first()
+            
+            if agent_config and agent_config.system_instruction:
+                base_prompt = agent_config.system_instruction
+                system_instruction_final = base_prompt.replace("{full_schema_text}", full_schema_text)
+            else:
+                system_instruction_final = f"Génère du SQL uniquement pour ce schéma :\n{full_schema_text}"
+
+            # ==========================================
+            # 1. OBTENIR LA RÉPONSE DE L'AGENT
+            # ==========================================
+            chat_result = generate_response(phrase_utilisateur, system_instruction=system_instruction_final)
+            status = chat_result.get("status")
+
+            if status in ["no_agent", "error"]:
+                return JsonResponse({
+                    "type": "error" if status == "error" else "no_agent",
+                    "data": chat_result.get("message"),
+                    "agent_name": "Système"
+                }, status=400 if status == "no_agent" else 500)
+            
+            # =========================================================================
+            # 🟢 INTERCEPTION DES RÉPONSES DE DISCUSSION (Bonjour, Aide, etc.)
+            # =========================================================================
+            if chat_result.get("type") == "chat":
+                return JsonResponse({
+                    "type": "chat", 
+                    "data": chat_result.get("text"),
+                    "agent_name": chat_result.get("agent_name", "Assistant")
+                })
+            
+            # ==========================================
+            # 2. EXTRACTION ET SÉCURISATION DU SQL
+            # ==========================================
+            requete_raw = chat_result.get("text", "").strip()
+            requete_sql = re.sub(r'```sql\s*|```\s*', '', requete_raw).strip()
+            
+            sql_clean_lower = requete_sql.strip().lower()
+            
+            if "-- impossible" in sql_clean_lower:
+                return JsonResponse({"type": "error", "data": "Cette demande est impossible à traduire ou non autorisée.", "agent_name": "Sécurité"}, status=400)
+
+            #mots_extraits = set(re.findall(r'\w+', sql_clean_lower))
+            mots_extraits = set(re.findall(r'\b[a-z_]+\b', sql_clean_lower))
+            
+            commandes_interdites = {
+                "delete", "update", "drop", "truncate", "alter", "insert", "create", "grant"
+            }
+            #  "user", "users", "utilisateur", "utilisateurs", "password", "agent", "agents"
+            
+            sql_pour_premier_mot = sql_clean_lower.lstrip("() ")
+            premier_mot = sql_pour_premier_mot.split()[0] if sql_pour_premier_mot.split() else ""
+            #contient_multi_requetes = ";" in requete_sql
+
+            if (premier_mot != "select" or 
+                #contient_multi_requetes or 
+                mots_extraits.intersection(commandes_interdites)):
+                
+                logger.warning(f"Blocage Sécurité (Requête non autorisée) : {requete_sql}")
+                return JsonResponse({
+                    "type": "error", 
+                    "data": "Action non autorisée : 🚨 ACTION SUSPECTE REJETÉE.", 
+                    "agent_name": "Sécurité"
+                }, status=403)
+                
+
+            # --- OPTIMISATION CRITIQUE INTEROPÉRABLE Anti-Lock ---
+            try:
+                with transaction.atomic(using=db_msg):
+                    Message_Ai.objects.using(db_msg).create(
+                        sender="system", 
+                        content=f"Requête SQL exécutée pour : {phrase_utilisateur}"
+                    )
+            except Exception as e:
+                logger.error(f"Erreur écriture préventive sur la base '{db_msg}' : {e}")
+
+            # ==========================================
+            # 3. EXÉCUTION DE LA REQUÊTE SQL DISTANTE
+            # ==========================================
+            try:
+                result = run_query(source, requete_sql)
+                request.session["last_sql_result"] = result
+                
+                limited_result = result[:100] 
+                
+                for row in limited_result:
+                    for key, value in row.items():
+                        if hasattr(value, 'isoformat'): 
+                            row[key] = value.isoformat()
+
+                response_data = {
+                    "type": "sql",
+                    "data": limited_result,
+                    "count": len(result),
+                    "sql_genere": requete_sql, 
+                    "dbs_utilisees": ", ".join(db_names_list), 
+                    "agent_name": chat_result.get("agent_name", "Base de données")
+                }
+                
+                # Sauvegarde finale sur la base gérée par le routeur
+                try:
+                    Message_Ai.objects.using(db_msg).create(
+                        sender="system", 
+                        content=f"SQL: {response_data.get('sql_genere','')}"
+                    )
+                except Exception as e:
+                    logger.error(f"Erreur enregistrement log SQL final sur {db_msg} : {e}")
+
+                return JsonResponse(response_data)
+
+            except utils.OperationalError as e:
+                logger.error(f"SQL ERROR: {str(e)} | Requête en cause : {requete_sql}", exc_info=True)
+                return JsonResponse({
+                    "type": "error",
+                    "data": f"Erreur SQL distant (Détail : {str(e)})",
+                    "sql_genere": requete_sql,
+                    "agent_name": "Système"
+                }, status=400)
+        return JsonResponse(response_data)
+            
     except Exception as e:
-        print(f"Erreur écriture préventive : {e}")
+        logger.error(f"🚨 EXCEPTION CAPTURÉE LORS DE L'EXÉCUTION : {str(e)} | Requête : {requete_sql}", exc_info=True)
+        return JsonResponse({
+                    "type": "error",
+                    "data": f"Erreur de syntaxe ou d'exécution SQL sur le serveur distant. (Détail : {str(e)})",
+                    "sql_genere": requete_sql,
+                    "agent_name": "Système"
+        }, status=400)
 
-    # Étape 4 : Exécution de la requête SQL externe
+
+def get_response(request):
+    if request.method != "POST":
+        return JsonResponse({"type": "error", "data": "Requête invalide"}, status=400)
+
+    user_msg = request.POST.get("message", "").strip()
+    print(f"DEBUG: user_msg reçu -> {user_msg}") 
+
+    if not user_msg:
+        return JsonResponse({"type": "error", "data": "Message vide"}, status=400)
+
+    # Sauvegarde du message de l'utilisateur
+    Message_Ai.objects.create(sender="user", content=user_msg)
+
+    source = DbSource.objects.filter(is_active=True).first()
+    print(f"DEBUG: Etat source -> {source}")
+
     try:
-        result = run_query(source, requete_sql)
-        limited_result = result[:100] 
-        
-        for row in limited_result:
-            for key, value in row.items():
-                if hasattr(value, 'isoformat'): 
-                    row[key] = value.isoformat()
+        # Sécurité : On vérifie qu'une source existe AVANT de tester si c'est une requête SQL
+        if source and is_sql_query(user_msg):
+            result = run_query(source, user_msg)
+            response_data = {
+                "type": "sql",
+                "data": result,
+                "count": len(result),
+                "agent_name": "Base de données"
+            }
+            # Sauvegarde du résultat en texte propre
+            Message_Ai.objects.create(sender="system", content=f"SQL Result: {len(result)} lignes.")
 
-        response_data = {
-            "type": "sql",
-            "data": limited_result,
-            "count": len(result),
-            "sql_genere": requete_sql, 
-            "dbs_utilisees": ", ".join(db_names_list), 
-            "agent_name": chat_result.get("agent_name", "Base de données")
-        }
-        print(f"Le response_data ==> {response_data}")
+        else:
+            # generate_response retourne désormais : {"status": "...", "text": "...", "agent_name": "..."}
+            chat_result = generate_response(user_msg)
+            
+            if chat_result.get("status") == "no_agent":
+                response_data = {
+                    "type": "no_agent",
+                    "data": chat_result.get("message"),
+                    "agent_name": "Système"
+                }
+            elif chat_result.get("status") == "error":
+                response_data = {
+                    "type": "error",
+                    "data": chat_result.get("message"),
+                    "agent_name": "Système"
+                }
+            else:
+                response_data = {
+                    "type": "chat",
+                    "data": chat_result.get("text"), # Extraction du texte brut pour le JS
+                    "agent_name": chat_result.get("agent_name", "Inconnu") # Transmission du nom de l'agent
+                }
+            
+            # Sauvegarde du texte brut de l'IA en base de données
+            Message_Ai.objects.create(sender="system", content=response_data["data"])
 
         return JsonResponse(response_data)
 
-    except utils.OperationalError as e:
-        print(f"SQL ERROR: {str(e)} | Requête en cause : {requete_sql}")
+    except Exception as e:
+        print(f"DEBUG ERROR: {str(e)}")
+        error_msg = f"Erreur système : {str(e)}"
+        Message_Ai.objects.create(sender="system", content=error_msg)
+        
         return JsonResponse({
             "type": "error",
-            "data": f"Erreur SQL distant (Détail : {str(e)})",
-            "sql_genere": requete_sql,
+            "data": error_msg,
             "agent_name": "Système"
-        }, status=400) """
+        }, status=500)
 
-
-@csrf_exempt
+#N'autorise pas l'interoperabilité
+""" @csrf_exempt
 def recherche_naturelle(request):
+    # =========================================================================
+    # 🔒 INTERCEPTION PRIORITAIRE EXPORT EXCEL VIA SESSION (ZÉRO SQL DANS L'URL)
+    # =========================================================================
+    if request.method == "GET" and request.GET.get("export") == "excel":
+        result_cache = request.session.get("last_sql_result")
+        if not result_cache:
+            return JsonResponse({"type": "error", "data": "Session expirée ou aucun résultat à exporter."}, status=400)
+            
+        try:
+            import openpyxl
+            from django.http import HttpResponse
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "Résultats Export"
+            
+            if result_cache and len(result_cache) > 0:
+                ws.append(list(result_cache[0].keys()))
+                for row in result_cache:
+                    ws.append(list(row.values()))
+            
+            response = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            response["Content-Disposition"] = 'attachment; filename="export_ia.xlsx"'
+            wb.save(response)
+            return response
+        except Exception as e:
+            return JsonResponse({"type": "error", "data": f"Erreur exportation : {str(e)}"}, status=500)
+
+    # =========================================================================
+    # 📥 TRAITEMENT DU POST DU CHAT STANDARD
+    # =========================================================================
     if request.method != "POST":
         return JsonResponse({"type": "error", "data": "Méthode non autorisée"}, status=405)
 
@@ -937,6 +923,9 @@ def recherche_naturelle(request):
 
     if not phrase_utilisateur:
         return JsonResponse({"type": "error", "data": "Requête vide", "agent_name": "Système"}, status=400)
+
+    # Sauvegarde sécurisée du message de l'utilisateur
+    Message_Ai.objects.create(sender="user", content=phrase_utilisateur)
 
     # ==========================================
     # 🟢 EXTRACTION ET FUSION DES SCHÉMAS ACTIFS
@@ -978,7 +967,17 @@ def recherche_naturelle(request):
             "data": chat_result.get("message"),
             "agent_name": "Système"
         }, status=400 if status == "no_agent" else 500)
-            
+    
+    # =========================================================================
+    # 🟢 INTERCEPTION DES RÉPONSES DE DISCUSSION (Bonjour, Aide, etc.)
+    # =========================================================================
+    if chat_result.get("type") == "chat":
+        return JsonResponse({
+            "type": "chat", 
+            "data": chat_result.get("text"),
+            "agent_name": chat_result.get("agent_name", "Assistant")
+        })
+    
     # ==========================================
     # 2. EXTRACTION ET SÉCURISATION DU SQL (Scanner de Tokens)
     # ==========================================
@@ -990,14 +989,22 @@ def recherche_naturelle(request):
     # 🚨 BLINDAGE DE SÉCURITÉ : Isolation et validation de chaque composant du script SQL
     sql_clean_lower = requete_sql.strip().lower()
     
+    # Si l'IA a renvoyé l'instruction d'impossibilité suite à une demande illicite
+    if "-- impossible" in sql_clean_lower:
+        return JsonResponse({"type": "error", "data": "Cette demande est impossible à traduire ou non autorisée.", "agent_name": "Sécurité"}, status=400)
+
     # Découpage du texte en mots uniques complets (élimine les ruses de concaténation)
     mots_extraits = set(re.findall(r'\w+', sql_clean_lower))
     
     # Liste noire des commandes d'altération et de modification d'écriture
-    commandes_interdites = {"delete", "update", "drop", "truncate", "alter", "insert", "create", "grant"}
+    commandes_interdites = {
+        "delete", "update", "drop", "truncate", "alter", "insert", "create", "grant",
+        "user", "users", "utilisateur", "utilisateurs", "password", "agent", "agents"
+    }
     
-    # Extraction stricte du premier mot d'instruction
-    premier_mot = sql_clean_lower.split()[0] if sql_clean_lower.split() else ""
+    # 🟢 CORRECTION SYNTAXE UNION : On nettoie les parenthèses à gauche avant d'isoler le premier mot
+    sql_pour_premier_mot = sql_clean_lower.lstrip("() ")
+    premier_mot = sql_pour_premier_mot.split()[0] if sql_pour_premier_mot.split() else ""
     
     # Détection de l'empilage multi-requêtes
     contient_multi_requetes = ";" in requete_sql
@@ -1007,10 +1014,10 @@ def recherche_naturelle(request):
         contient_multi_requetes or 
         mots_extraits.intersection(commandes_interdites)):
         
-        print(f"🚨 ACTION SUSPECTE INTERCEPTÉE : {requete_sql}")
+        print(f"Le système accepte uniquement les instructions de consultation (SELECT) : {requete_sql}")
         return JsonResponse({
             "type": "error", 
-            "data": "Action non autorisée : Le système accepte uniquement les instructions de consultation (SELECT).", 
+            "data": "Action non autorisée : 🚨 ACTION SUSPECTE REJETÉE.", 
             "agent_name": "Sécurité"
         }, status=403)
         
@@ -1019,7 +1026,7 @@ def recherche_naturelle(request):
     print(f"La source d'exécution ==> {source}")
 
     # --- OPTIMISATION CRITIQUE Anti-Lock ---
-    try:
+      try:
         with transaction.atomic():
             Message_Ai.objects.create(
                 sender="system", 
@@ -1029,10 +1036,14 @@ def recherche_naturelle(request):
         print(f"Erreur écriture préventive : {e}")
 
     # ==========================================
-    # 3. EXÉCUTION DE LA REQUÊTE SQL DISTANTE
+    # 3. EXÉCUTION DE LA REQUÊTE SQL DISTANTE (Unique Try Block)
     # ==========================================
     try:
         result = run_query(source, requete_sql)
+        
+        # 🟢 OPTIMISATION : On stocke le résultat propre dans la session pour l'export Excel sécurisé
+        request.session["last_sql_result"] = result
+        
         limited_result = result[:100] 
         
         for row in limited_result:
@@ -1049,6 +1060,12 @@ def recherche_naturelle(request):
             "agent_name": chat_result.get("agent_name", "Base de données")
         }
         print(f"Le response_data ==> {response_data}")
+        
+        # Sécurisation de la conversion de type pour éviter le crash du logger de base de données
+        Message_Ai.objects.create(
+            sender="system", 
+            content=f"SQL: {response_data.get('sql_genere','')}"
+        )
 
         return JsonResponse(response_data)
 
@@ -1061,15 +1078,13 @@ def recherche_naturelle(request):
             "agent_name": "Système"
         }, status=400)
     
-    # --- INTERCEPTION ET NETTOYAGE DES ERREURS D'I.A. (Quotas, pannes Google...) ---
+    # 🟢 FUSION UNIQUE : Captures groupées au sein du même bloc d'exécution
     except Exception as e:
-        # Appel de notre service de nettoyage des erreurs
-        error_info = get_clean_ai_error(e, provider_name='gemini')
-        
-        print(f"AI ERROR TRAITÉE : Status {error_info['status']} | {error_info['message']}")
-        
+        print(f"🚨 EXCEPTION CAPTURÉE LORS DE L'EXÉCUTION : {str(e)} | Requête : {requete_sql}")
         return JsonResponse({
             "type": "error",
-            "data": error_info["message"],
+            "data": f"Erreur de syntaxe ou d'exécution SQL sur le serveur distant. (Détail : {str(e)})",
+            "sql_genere": requete_sql,
             "agent_name": "Système"
-        }, status=error_info["status"])
+        }, status=400)
+ """

@@ -1,19 +1,15 @@
 {% extends "chat/base.html" %}
 {% block content %}
-    {% comment %} <div class="container mx-auto flex flex-row gap-4"> {% endcomment %}
 <div class="container mx-auto flex flex-row gap-4 h-[600px]"> 
-        {% comment %} <div class="w-max bg-white rounded-xl shadow-lg p-4"> {% endcomment %}
         <div class="flex-1 bg-white rounded-xl shadow-lg p-4 overflow-y-auto min-h-0">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-bold text-gray-800">Sources SQL</h3>
-                {% comment %} <a href="{% url 'add_source' %}" class="text-xs bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-md">+ Ajouter</a> {% endcomment %}
                 <!-- Exemple bouton ajouter -->
                 <a id="openSrcModalBtn"
                    class="source-modal-trigger text-xs bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-md">
                     + Nouveau
                 </a>
             </div>
-            {% comment %} <form method="post" action="{% url 'activ_source' %}" id="dbSourceForm"> {% endcomment %}
             <form method="post"
                   action="{% url 'toggle_db_source' 0 %}"
                   id="dbSourceForm">
@@ -92,11 +88,7 @@
                                         data-updated="{{ source.date_modification|date:'d/m/Y H:i' }}">
                                     Modif
                                 </button>
-                                {% comment %} <button type="button"
-                                        onclick="deleteSource('{{ source.id }}', this)"
-                                        class="text-[10px] px-2 py-0.5 font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors shadow-sm">
-                                    Suppr
-                                </button> {% endcomment %}
+
                                 <button type="button"
                                                 onclick="window.deleteSource('{{ source.id }}', this)"
                                                 class="text-[10px] px-2 py-0.5 font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors shadow-sm">
@@ -135,9 +127,7 @@
                             class="text-xs bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-md transition shadow-sm">
                         + Nouveau
                     </button>
-                    {% comment %} <button type="button" class="agent-modal-trigger text-xs bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-md transition shadow-sm">
-                        + Nouveau
-                    </button> {% endcomment %}
+                 
                 </div>
             </div>
             <!-- Formulaire d'activation manuel -->
@@ -195,20 +185,6 @@
                                         Activer
                                     </a>
                                 {% endif %}
-                                <!-- Bouton Modifier -->
-                                {% comment %} <a href="{% url 'edit_agent' agent.id %}"
-                                   class="text-[10px] px-2 py-0.5 font-semibold text-gray-600 bg-white hover:bg-gray-50 border border-gray-300 rounded transition-colors shadow-sm">
-                                    Modif
-                                </a> {% endcomment %}
-                                {% comment %} <button type="button" 
-                                        class="btn-edit text-[10px] px-2 py-0.5 font-semibold text-gray-600 bg-white hover:bg-gray-50 border border-gray-300 rounded transition-colors shadow-sm"
-                                        data-id="{{ agent.id }}"
-                                        data-name="{{ agent.name }}"
-                                        data-model="{{ agent.model_name }}"
-                                        data-instruction="{{ agent.system_instruction }}"
-                                        data-active="{% if agent.is_active %}true{% else %}false{% endif %}">
-                                    Modif
-                                </button> {% endcomment %}
 
                                 <button type="button" 
                                         class="btn-edit text-[10px] px-2 py-0.5 font-semibold text-gray-600 bg-white hover:bg-gray-50 border border-gray-300 rounded transition-colors shadow-sm"
@@ -229,12 +205,6 @@
                                             class="text-[10px] px-2 py-0.5 font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors shadow-sm">
                                         Suppr
                                     </button>
-                               {% comment %}  <a href="{% url 'delete_agent' agent.id %}"
-                                   onclick="return confirm('Supprimer cet agent ?')"
-                                   class="text-[10px] px-2 py-0.5 font-semibold text-red-600 bg-red-50 hover:bg-red-100 border border-red-200 rounded transition-colors shadow-sm">
-                                    Suppr
-                                </a> {% endcomment %}
-
                             </div>
                         </div>
                         
@@ -247,8 +217,6 @@
 
             <div class="flex-1 bg-white rounded-xl shadow-lg p-4 overflow-y-auto"></div>
         
-        <!-- 2. Le Template invisible  (Chargement immédiat en RAM) -->
-        {% comment %} ######################################################## {% endcomment %}
         <!-- 2. Le Template HTML instantané (Chargement immédiat en RAM) -->
         <template id="dbSourceFormTemplate">
             <form method="post"
@@ -372,21 +340,22 @@
         <!-- Champ Nom -->
         <div class="w-full block mb-3">
             <label class="block text-xs font-semibold text-gray-700 mb-1">Nom de la source</label>
-            <input type="text" name="name" id="edit_db_name" required class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none">
+            <!-- Correction : id retiré, class js-edit-name ajoutée -->
+            <input type="text" name="name" class="js-edit-name w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none" required>
         </div>
 
         <!-- 1. Type de BDD et Hôte -->
         <div class="w-full flex flex-row gap-4 mb-3">
             <div style="flex: 1 1 0% !important;">
                 <label class="block text-xs font-semibold text-gray-700 mb-1">Type de BDD</label>
-                <select name="db_type" id="edit_db_type" class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none bg-white">
+                <select name="db_type" class="js-edit-type w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none bg-white">
                     <option value="mysql">MySQL</option>
                     <option value="postgres">PostgreSQL</option>
                 </select>
             </div>
             <div style="flex: 2 1 0% !important;">
                 <label class="block text-xs font-semibold text-gray-700 mb-1">Hôte (Host)</label>
-                <input type="text" name="host" id="edit_db_host" required class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none">
+                <input type="text" name="host" class="js-edit-host w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none" required>
             </div>
         </div>
 
@@ -394,11 +363,11 @@
         <div class="w-full flex flex-row gap-4 mb-3">
             <div style="flex: 2 1 0% !important;">
                 <label class="block text-xs font-semibold text-gray-700 mb-1">Nom Base de données</label>
-                <input type="text" name="database_name" id="edit_db_database_name" required class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none">
+                <input type="text" name="database_name" class="js-edit-dbname w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none" required>
             </div>
             <div style="flex: 1 1 0% !important;">
                 <label class="block text-xs font-semibold text-gray-700 mb-1">Port</label>
-                <input type="number" name="port" id="edit_db_port" required class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none">
+                <input type="number" name="port" class="js-edit-port w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none" required>
             </div>
         </div>
 
@@ -406,23 +375,23 @@
         <div class="w-full flex flex-row gap-4 mb-3">
             <div class="flex-1" style="flex: 1 1 0% !important;">
                 <label class="block text-xs font-semibold text-gray-700 mb-1">Identifiant</label>
-                <input type="text" name="username" id="edit_db_username" required class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none">
+                <input type="text" name="username" class="js-edit-username w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none" required>
             </div>
             <div class="flex-1" style="flex: 1 1 0% !important;">
                 <label class="block text-xs font-semibold text-gray-700 mb-1">Mot de passe (Laisser vide si inchangé)</label>
-                <input type="password" name="password" id="edit_db_password" class="w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none" placeholder="••••••••">
+                <input type="password" name="password" class="js-edit-password w-full text-gray-600 border border-gray-300 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none" placeholder="••••••••">
             </div>
         </div>
 
-        <!-- Section Métadonnées : Dates en miniature délimitées discrètement -->
-        <div id="edit_db_dates_container" class="flex justify-between items-center pt-2 text-[10px] text-gray-400 border-t border-gray-100 font-medium">
+        <!-- Section Métadonnées -->
+        <div class="flex justify-between items-center pt-2 text-[10px] text-gray-400 border-t border-gray-100 font-medium">
             <div>
                 <span>Créée le :</span>
-                <span id="edit_db_created_at" class="font-mono text-gray-500 ml-1">—</span>
+                <span class="js-edit-created font-mono text-gray-500 ml-1">—</span>
             </div>
             <div>
                 <span>Modifiée le :</span>
-                <span id="edit_db_updated_at" class="font-mono text-gray-500 ml-1">—</span>
+                <span class="js-edit-updated font-mono text-gray-500 ml-1">—</span>
             </div>
         </div>
 
@@ -437,6 +406,7 @@
         </div>
     </form>
 </template>
+
         <!-- 2. Le Template invisible contenant votre formulaire Django d'origine nettoyé -->
         <template id="agentFormTemplate">
             <form method="post"
@@ -500,56 +470,12 @@
                 </div>
             </form>
         </template>
-
-        <!-- Balise Template contenant le formulaire brut -->
-{% comment %} <template id="agentFormTemplate">
-    <form method="post" action="{% url 'edit_agent' %}" class="space-y-4 text-left">
-        {% csrf_token %}
-        <div>
-            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nom de l'agent</label>
-            <input type="text" name="name" required class="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-teal-500">
-        </div>
-        <div>
-            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Nom du modèle</label>
-            <input type="text" name="model_name" required class="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-teal-500">
-        </div>
-        <div>
-            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Clé API</label>
-            <input type="password" name="api_key" class="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-teal-500">
-        </div>
-        <div>
-            <label class="block text-xs font-bold text-gray-700 uppercase mb-1">Instructions Système</label>
-            <textarea name="system_instruction" rows="3" class="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-teal-500"></textarea>
-        </div>
-        <div class="flex items-center gap-2">
-            <input type="checkbox" name="is_active" id="modal_is_active" class="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded">
-            <label for="modal_is_active" class="text-sm font-medium text-gray-700">Activer immédiatement</label>
-        </div>
-        <div class="flex justify-end gap-2 pt-2 border-t">
-            <button type="submit" class="px-4 py-2 text-sm font-semibold text-white bg-teal-600 hover:bg-teal-700 rounded-lg shadow-sm transition-colors">
-                Enregistrer
-            </button>
-        </div>
-    </form>
-</template> {% endcomment %}
-<!-- Balise Template corrigée -->
+    
 <!-- Template dédié exclusivement à la modification -->
 <template id="editAgentTemplate">
     <form method="post" action="" class="space-y-4 text-left">
         {% csrf_token %}
         
-        <!-- Section Métadonnées : Dates affichées discrètement -->
-        {% comment %} <div id="edit_dates_container" class="grid grid-cols-2 gap-4 p-2 bg-gray-50 border border-gray-100 rounded-lg text-[11px] text-gray-500">
-            <div>
-                <span class="block font-semibold text-gray-600 uppercase tracking-wider text-[9px]">Créé le</span>
-                <span name="date_creation" id="edit_created_at" class="font-mono">—</span>
-            </div>
-            <div>
-                <span class="block font-semibold text-gray-600 uppercase tracking-wider text-[9px]">Modifié le</span>
-                <span id="edit_updated_at" class="font-mono">—</span>
-            </div>
-        </div> {% endcomment %}
-
         <div>
             <label class="block text-xs  text-gray-700 uppercase mb-1">Nom de l'agent</label>
             <input type="text" name="name" id="edit_name" required class="w-full p-2 text-sm border rounded-lg focus:ring-2 focus:ring-teal-500">
@@ -650,56 +576,6 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-/*document.getElementById("dbSourceForm").addEventListener("submit", function(e) {
-    e.preventDefault();
-
-    const form = this;
-    const formData = new FormData(form);
-
-    fetch(form.action, {
-        method: "POST",
-        headers: {
-            "X-CSRFToken": document.querySelector('[name=csrfmiddlewaretoken]').value
-        },
-        body: formData
-    })
-    .then(response => response.json())
-    .then(data => {
-
-        if (!data.success) return;
-
-        // 🔄 Reset toutes les cartes
-        document.querySelectorAll("[data-id]").forEach(card => {
-
-            const badge = card.querySelector(".status-text");
-            const radio = card.querySelector('input[type="radio"]');
-
-            badge.textContent = "Non connectée";
-            badge.className =
-                "status-text text-[10px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600";
-
-            if (radio) radio.checked = false;
-        });
-
-        // ✅ Activer la bonne carte
-        const activeCard = document.querySelector(`[data-id="${data.source_id}"]`);
-
-        if (activeCard) {
-
-            const badge = activeCard.querySelector(".status-text");
-            const radio = activeCard.querySelector('input[type="radio"]');
-
-            badge.textContent = "Connectée";
-            badge.className =
-                "status-text text-[10px] px-1.5 py-0.5 rounded bg-green-100 text-green-700";
-
-            if (radio) radio.checked = true;
-        }
-
-    })
-    .catch(error => console.error("Erreur activation:", error));
-});*/
-
 // Script de traitement pour le bouton d'activation -->
 function triggerAgentActivation(db_source_id) {
     const form = document.getElementById('dbSourceForm');
@@ -730,8 +606,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Bouton edit
-     // Écoute globale des boutons de modification
+    // Écoute globale des boutons de modification
     document.querySelectorAll('.btn-edit').forEach(button => {
         button.addEventListener('click', function(e) {
             e.preventDefault();
@@ -759,68 +634,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-
-    /*// BON MAIS VEUT EDIT
-    const template3 = document.getElementById('editAgentTemplate');
-    if (!template3) return;
-    // Interception du clic sur chaque bouton Modifier
-    document.querySelectorAll('.btn-edit').forEach(button => {
-        button.addEventListener('click', function() {
-            // 1. Récupérer toutes les données de l'agent depuis le bouton cliqué
-            const agentId = this.getAttribute('data-id');
-            const agentName = this.getAttribute('data-name');
-            const agentModel = this.getAttribute('data-model');
-            const agentInstruction = this.getAttribute('data-instruction');
-            const isActive = this.getAttribute('data-active') === 'true';
-
-            // 2. Ouvrir SweetAlert avec le HTML brut du template
-            Swal.fire({
-                title: "Modifier l'Agent",
-                html: template3.innerHTML, // On injecte la structure du formulaire
-                showConfirmButton: false,
-                focusConfirm: false,
-                width: '450px',
-                background: '#ffffff',
-                customClass: {
-                    popup: 'rounded-2xl shadow-2xl p-6'
-                },
-                allowOutsideClick: true,
-                
-                // 3. Remplir les champs une fois que la modale est réellement injectée dans le DOM
-                didOpen: () => {
-                    const popup = Swal.getPopup();
-                    
-                    // Configuration de l'URL d'action du formulaire
-                    const form = popup.querySelector('form');
-                    if (form) {
-                        form.action = `/edit/${agentId}/`;
-                    }
-
-                    // Remplissage des champs de texte
-                    const nameInput = popup.querySelector('#edit_name');
-                    if (nameInput) nameInput.value = agentName || '';
-
-                    const modelInput = popup.querySelector('#edit_model_name');
-                    if (modelInput) modelInput.value = agentModel || '';
-
-                    const instructionInput = popup.querySelector('#edit_system_instruction');
-                    if (instructionInput) {
-                        // Nettoyage des chaînes vides ou par défaut
-                        if (agentInstruction === "Aucune instruction configurée." || agentInstruction === '""' || !agentInstruction) {
-                            instructionInput.value = '';
-                        } else {
-                            instructionInput.value = agentInstruction;
-                        }
-                    }
-
-                    // Configuration de la case à cocher
-                    const activeCheckbox = popup.querySelector('#edit_is_active');
-                    if (activeCheckbox) activeCheckbox.checked = isActive;
-                }
-            });
-        });
-    });*/
-
     // LOGIQUE 3 
     const openBtn2 = document.getElementById('openSrcModalBtn');
     const template2 = document.getElementById('dbSourceFormTemplate');
@@ -834,23 +647,6 @@ document.addEventListener('DOMContentLoaded', function() {
             openAgentModal(formHtml);
         });
     }
-
-
-   // ==========================================
-    // LOGIQUE 2 : Gestion des Modals de Data Sources (DÉLÉGATION DE CLIC FIABLE)
-    // ==========================================
-     // Écouteur global pour intercepter les ajouts et modifications de sources
-   /* document.addEventListener('click', function(e) {
-        const trigger = e.target.closest('.source-modal-trigger');
-        
-        if (trigger) {
-            e.preventDefault(); // Bloque la redirection
-            const targetUrl = trigger.getAttribute('href');
-            
-            // Appel de la fonction en lui passant le bouton pour extraire les dataset si modif
-            openSourceModal(targetUrl, trigger);
-        }
-    });  */
 
 });
 
