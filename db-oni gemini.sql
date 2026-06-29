@@ -39,16 +39,16 @@ CREATE TABLE carte_identite (
 
 -- Insertion des 10 Individus (Identités  croisées avec le format CNIB de l'ONI)
 INSERT INTO individu (numero_cnib, nom, prenom, date_naissance, lieu_naissance, taille_cm, profession) VALUES
-('B00000001', 'OUEDRAOGO', 'Ibrahim', '1982-04-14', 'Ouagadougou', 175, 'Ingénieur Télécom'),
-('B00000002', 'TRAORE', 'Fatoumata', '1988-09-23', 'Bobo-Dioulasso', 168, 'Infirmière'),
-('B00000003', 'SANON', 'Pierre', '1975-12-05', 'Koudougou', 182, 'Analyste Financier'),
-('B00000004', 'ZOUNDI', 'Mariam', '1993-01-19', 'Ouahigouya', 165, 'Conducteur de Travaux'),
-('B00000005', 'KABORE', 'Seydou', '1980-07-30', 'Tenkodogo', 178, 'Géologue'),
-('B00000006', 'CONOMBO', 'Adama', '1985-03-11', 'Kaya', 170, 'Technicien Réseau'),
-('B00000007', 'SOME', 'Clarisse', '1990-11-02', 'Gaoua', 162, 'Guichetière'),
+('B00000001', 'OUEDRAOGO', 'Ibrahim', 	'1982-04-14', 'Ouagadougou', 175, 'Ingénieur Télécom'),
+('B00000002', 'TRAORE', 'Fatoumata',  	'1988-09-23', 'Bobo-Dioulasso', 168, 'Infirmière'),
+('B00000003', 'SANON', 'Pierre',  		 '1975-12-05', 'Koudougou', 182, 'Analyste Financier'),
+('B00000004', 'ZOUNDI', 'Mariam', 		'1993-01-19', 'Ouahigouya', 165, 'Conducteur de Travaux'),
+('B00000005', 'KABORE', 'Seydou', 		'1980-07-30', 'Tenkodogo', 178, 'Géologue'),
+('B00000006', 'CONOMBO', 'Adama', 		'1985-03-11', 'Kaya', 170, 'Technicien Réseau'),
+('B00000007', 'SOME', 'Clarisse', 		'1990-11-02', 'Gaoua', 162, 'Guichetière'),
 ('B00000008', 'TIENDREBEOGO', 'Pascal', '1978-06-25', 'Fada N\'Gourma', 174, 'Comptable'),
-('B00000009', 'DIALLO', 'Hama', '1983-02-28', 'Dori', 180, 'Opérateur d\'Engins'),
-('B00000010', 'YAMEOGO', 'Chantal', '1995-08-14', 'Koudougou', 167, 'Secrétaire');
+('B00000009', 'DIALLO', 'Hama', 		'1983-02-28', 'Dori', 180, 'Opérateur d\'Engins'),
+('B00000010', 'YAMEOGO', 'Chantal', 	'1995-08-14', 'Koudougou', 167, 'Secrétaire');
 
 -- Insertion des Personnes à prévenir (Liées aux CNIB)
 INSERT INTO personne_a_prevenir (numero_cnib_individu, nom_complet, lien_parente, telephone, ville_residence) VALUES

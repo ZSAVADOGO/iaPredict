@@ -4,6 +4,50 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Ia Predict{% endblock %}</title>
+    
+    <!-- 1. CSS EN PREMIER (Indispensable pour éviter le flash d'affichage brut) -->
+    {% tailwind_css %}
+    <link rel="stylesheet" href="{% static 'css/sweetalert2.min.css' %}" />
+
+    <!-- 2. SCRIPTS NON-BLOQUANTS (Le mot-clé 'defer' charge en arrière-plan sans bloquer le HTML) -->
+    <script src="{% static 'js/sweetalert2.all.min.js' %}" defer></script>
+    <script src="{% static 'js/alerts.js' %}" defer></script>
+    <script defer src="{% static 'js/alpine.min.js' %}"></script>
+  </head>
+  
+  <body class="bg-gray-100 min-h-screen flex flex-col">
+    <!-- Barre de navigation sticky -->
+    <nav class="flex justify-center gap-6 p-4 bg-white shadow-sm w-full sticky top-0 z-50">
+      <a href="{% url 'chat' %}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm font-medium">Accueil</a>
+      <a href="{% url 'parametre' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium">Parametres</a>
+      <a href="{% url 'agent_ia' %}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition text-sm font-medium">Agents IA</a>
+    </nav>
+
+    <main class="flex-1 p-4">
+      <div class="w-full max-w-6xl mx-auto">
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+
+    <footer class="bg-white shadow-sm p-2 text-center text-xs text-gray-400">
+      Ia Predict © 2026
+    </footer>
+    <script src="{% static 'js/chart.umd.min.js' %}"></script>
+    <!-- 3. BLOC POUR LES SCRIPTS SPÉCIFIQUES DES PAGES ENFANTS (Optionnel mais recommandé) -->
+    {% block extra_js %}{% endblock %}
+  </body>
+</html>
+
+<!-- pour eviter l'avertissement: La mise en page a été forcée avant le chargement complet de la page. 
+ Si les feuilles de style ne sont pas encore chargées, cela peut provoquer un flash de contenu non stylisé. --> 
+
+{% comment %} {% load static tailwind_tags %}
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
       {% block title %}Ia Predict{% endblock %}
     </title>
@@ -13,11 +57,14 @@
     <!-- CHARGEMENT DANS LE HEAD (Avec defer pour respecter l'ordre et ne pas bloquer le HTML) -->
     <script src="{% static 'js/sweetalert2.all.min.js' %}" defer></script>
     <script src="{% static 'js/alerts.js' %}" defer></script>
+
+    <script src="https://jsdelivr.net"></script>
+    <script src="https://jsdelivr.net"></script>
+
   </head>
   <!-- <body class="bg-gray-100 min-h-screen flex flex-col"> -->
   <body class="bg-gray-100 min-h-screen flex flex-col">
     <!-- Barre de navigation (Fixée en haut) -->
-    {% comment %} <nav class="flex justify-center gap-6 p-4 bg-white shadow-sm w-full"> {% endcomment %}
     <nav class="flex justify-center gap-6 p-4 bg-white shadow-sm w-full sticky top-0 z-50">
       <a href="{% url 'chat' %}"
          class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition text-sm font-medium">
@@ -32,23 +79,17 @@
         Agents IA
       </a>
     </nav>
-    <!-- Zone de contenu (Prend tout l'espace restant et centre le bloc) -->
-    {% comment %}
-    <main class="flex-1 flex items-center justify-center p-4">
-      <div class="w-full max-w-6xl">{% block content %} {% endblock %}</div>
-    </main>
-    {% endcomment %}
     <main class="flex-1 p-4">
       <div class="w-full max-w-6xl mx-auto">
         {% block content %}{% endblock %}
       </div>
     </main>
     <footer class="bg-white shadow-sm p-2 text-center text-xs text-gray-400">
-      Mon App © 2026
+      Ia Predict © 2026
     </footer>
     <!-- SWEET ALERT -->
     <script src="{% static 'js/sweetalert2.all.min.js' %}"></script>
     <!-- ALERTS CENTRALISEES -->
     <script src="{% static 'js/alerts.js' %}"></script>
   </body>
-</html>
+</html> {% endcomment %}
