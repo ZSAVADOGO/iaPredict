@@ -71,77 +71,70 @@
         <div id="chat-container"
              class="w-full md:w-9/12 bg-white rounded-xl shadow-lg flex flex-col  h-[600px] md:h-full overflow-hidden">
             <!-- Chat Box : Scrolle en interne si les messages dépassent -->
-             <div id="chat-box" class="flex-1 p-4 overflow-y-auto space-y-4">
-    {% if messages %}
-        {# 1. Regroupement chronologique de TOUS les messages par jour #}
-        {% regroup messages by date_creation|date:"Y-m-d" as messages_par_jour %}
-        {% for jour in messages_par_jour %}
-            
-            <!-- Séparateur de Date Dynamique (Aujourd'hui, Hier, ou Date formatée) -->
-            <div class="flex items-center my-6 sticky top-0 bg-white py-2 z-10">
-                <div class="flex-1 border-t border-gray-200"></div>
-                <span class="mx-3 px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-gray-100 text-gray-500 rounded-md border border-gray-200 shadow-sm">
-                    {% if jour.grouper == date_aujourdhui %}
-                        Aujourd'hui
-                    {% elif jour.grouper == date_hier %}
-                        Hier
-                    {% else %}
-                        {{ jour.list.0.date_creation|date:"d F Y" }}
-                    {% endif %}
-                </span>
-                <div class="flex-1 border-t border-gray-200"></div>
-            </div>
-            
-            <!-- Conteneur des messages de la journée -->
-            <div class="space-y-4">
-                {% for msg in jour.list %}
-                    
-                    <!-- 🟢 CAS 1 : C'est un Dashboard Analytique complet (Sauvegardé en JSON) -->
-                    {% if msg.is_json %}
-                        <div class="flex flex-col items-start mb-2 w-full raw-dashboard-container">
-                            <!-- Payload technique masqué qui alimente la méthode JS 'createDashboardBubble' -->
-                            <div class="msg-dashboard-payload hidden" data-payload="{{ msg.content }}"></div>
-                            <div class="text-gray-400 text-xs mt-1 px-1">{{ msg.date_creation|date:"H:i" }}</div>
-                        </div>
-
-                    <!-- 🟢 CAS 2 : C'est un résultat de Requête SQL Saisie Manuellement par l'utilisateur -->
-                    {% elif msg.is_sql_direct %}
-                        <div class="flex flex-col items-start mb-2 w-full">
-                            <!-- Style console sombre pour différencier les commandes directes de l'infrastructure -->
-                            <div class="bg-slate-800 text-emerald-400 border border-slate-700 px-4 py-2.5 rounded-2xl max-w-[80%] font-mono text-xs shadow-sm">
-                                <p class="whitespace-pre-wrap font-bold">🖥️ {{ msg.content }}</p>
-                            </div>
-                            <div class="text-gray-400 text-xs mt-1 px-1">{{ msg.date_creation|date:"H:i" }}</div>
-                        </div>
-
-                    <!-- 🟢 CAS 3 : C'est un message de discussion normal (Utilisateur, Chat IA, ou réponse prédéfinie RESPONSES) -->
-                    {% else %}
-                        <div class="flex flex-col {% if msg.sender == 'user' %}items-end{% else %}items-start{% endif %} mb-2">
-                            <div class="{% if msg.sender == 'user' %} bg-green-200 {% else %} bg-gray-100 {% endif %} text-gray-800 px-4 py-2 rounded-2xl max-w-[70%] msg-container ">
-                                {% if msg.content|length > 200 %}
-                                    <span class="short-text whitespace-pre-wrap">{{ msg.content|truncatechars:200 }}</span>
-                                    <span class="full-text hidden whitespace-pre-wrap">{{ msg.content }}</span>
-                                    <button onclick="toggleMessage(this)"
-                                            class="text-blue-600 hover:text-blue-800 text-xs font-semibold mt-1 block focus:outline-none">
-                                        Voir plus
-                                    </button>
+            <div id="chat-box" class="flex-1 p-4 overflow-y-auto space-y-4">
+                {% if messages %}
+                    {# 1. Regroupement chronologique de TOUS les messages par jour #}
+                    {% regroup messages by date_creation|date:"Y-m-d" as messages_par_jour %}
+                    {% for jour in messages_par_jour %}
+                        <!-- Séparateur de Date Dynamique (Aujourd'hui, Hier, ou Date formatée) -->
+                        <div class="flex items-center my-6 sticky top-0 bg-white py-2 z-10">
+                            <div class="flex-1 border-t border-gray-200"></div>
+                            <span class="mx-3 px-2.5 py-0.5 text-[10px] font-bold tracking-wider uppercase bg-gray-100 text-gray-500 rounded-md border border-gray-200 shadow-sm">
+                                {% if jour.grouper == date_aujourdhui %}
+                                    Aujourd'hui
+                                {% elif jour.grouper == date_hier %}
+                                    Hier
                                 {% else %}
-                                    <p class="whitespace-pre-wrap">{{ msg.content }}</p>
+                                    {{ jour.list.0.date_creation|date:"d F Y" }}
                                 {% endif %}
-                            </div>
-                            <div class="text-gray-400 text-xs mt-1 px-1">{{ msg.date_creation|date:"H:i" }}</div>
+                            </span>
+                            <div class="flex-1 border-t border-gray-200"></div>
                         </div>
-                    {% endif %}
-
-                {% endfor %}
+                        <!-- Conteneur des messages de la journée -->
+                        <div class="space-y-4">
+                            {% for msg in jour.list %}
+                                <!-- 🟢 CAS 1 : C'est un Dashboard Analytique complet (Sauvegardé en JSON) -->
+                                {% if msg.is_json %}
+                                    <div class="flex flex-col items-start mb-2 w-full raw-dashboard-container">
+                                        <!-- Payload technique masqué qui alimente la méthode JS 'createDashboardBubble' -->
+                                        <div class="msg-dashboard-payload hidden" data-payload="{{ msg.content }}"></div>
+                                        <div class="text-gray-400 text-xs mt-1 px-1">{{ msg.date_creation|date:"H:i" }}</div>
+                                    </div>
+                                    <!-- 🟢 CAS 2 : C'est un résultat de Requête SQL Saisie Manuellement par l'utilisateur -->
+                                {% elif msg.is_sql_direct %}
+                                    <div class="flex flex-col items-start mb-2 w-full">
+                                        <!-- Style console sombre pour différencier les commandes directes de l'infrastructure -->
+                                        <div class="bg-slate-800 text-emerald-400 border border-slate-700 px-4 py-2.5 rounded-2xl max-w-[80%] font-mono text-xs shadow-sm">
+                                            <p class="whitespace-pre-wrap font-bold">🖥️ {{ msg.content }}</p>
+                                        </div>
+                                        <div class="text-gray-400 text-xs mt-1 px-1">{{ msg.date_creation|date:"H:i" }}</div>
+                                    </div>
+                                    <!-- 🟢 CAS 3 : C'est un message de discussion normal (Utilisateur, Chat IA, ou réponse prédéfinie RESPONSES) -->
+                                {% else %}
+                                    <div class="flex flex-col {% if msg.sender == 'user' %}items-end{% else %}items-start{% endif %} mb-2">
+                                        <div class="{% if msg.sender == 'user' %} bg-green-200 {% else %} bg-gray-100 {% endif %} text-gray-800 px-4 py-2 rounded-2xl max-w-[70%] msg-container ">
+                                            {% if msg.content|length > 200 %}
+                                                <span class="short-text whitespace-pre-wrap">{{ msg.content|truncatechars:200 }}</span>
+                                                <span class="full-text hidden whitespace-pre-wrap">{{ msg.content }}</span>
+                                                <button onclick="toggleMessage(this)"
+                                                        class="text-blue-600 hover:text-blue-800 text-xs font-semibold mt-1 block focus:outline-none">
+                                                    Voir plus
+                                                </button>
+                                            {% else %}
+                                                <p class="whitespace-pre-wrap">{{ msg.content }}</p>
+                                            {% endif %}
+                                        </div>
+                                        <div class="text-gray-400 text-xs mt-1 px-1">{{ msg.date_creation|date:"H:i" }}</div>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <!-- État vide si aucune discussion n'a commencé -->
+                    <div class="text-center text-gray-400 text-sm py-12">Commencez la discussion en envoyant un message.</div>
+                {% endif %}
             </div>
-        {% endfor %}
-    {% else %}
-        <!-- État vide si aucune discussion n'a commencé -->
-        <div class="text-center text-gray-400 text-sm py-12">Commencez la discussion en envoyant un message.</div>
-    {% endif %}
-</div>
-
             {% comment %} <div id="chat-box" class="flex-1 p-4 overflow-y-auto space-y-4">
                 {% if messages %}
                     {# 1. On regroupe TOUS les messages de la discussion par jour #}
@@ -170,8 +163,7 @@
                                         {% if msg.content|length > 200 %}
                                             <span class="short-text whitespace-pre-wrap">{{ msg.content|truncatechars:200 }}</span>
                                             <span class="full-text hidden whitespace-pre-wrap">{{ msg.content }}</span>
-                                            <button onclick="toggleMessage(this)"
-                                                    class="text-blue-600 hover:text-blue-800 text-xs font-semibold mt-1 block focus:outline-none">
+                                            <button onclick="toggleMessage(this)" class="text-blue-600 hover:text-blue-800 text-xs font-semibold mt-1 block focus:outline-none">
                                                 Voir plus
                                             </button>
                                         {% else %}
@@ -457,14 +449,15 @@ const createDashboardBubble = (response) => {
     `;
 
     // 2. Zone Graphique
+     
     let chartHtml = '';
-    if (response.visual_type === 'line_chart' || response.visual_type === 'bar_chart') {
-        chartHtml = `
-            <div class="w-full bg-gray-50/50 p-3 rounded-xl border border-gray-100 h-52 relative">
-                <canvas id="${uniqueId}-canvas"></canvas>
-            </div>
-        `;
-    }
+if (response.visual_type === 'line_chart' || response.visual_type === 'bar_chart' || response.visual_type === 'pie_chart') {
+    chartHtml = `
+        <div class="w-full bg-gray-50/50 p-4 rounded-2xl border border-gray-100 h-[450px] relative shadow-inner">
+            <canvas id="${uniqueId}-canvas" class="w-full h-full"></canvas>
+        </div>
+    `;
+}
 
     // 3. Zone Tableau (Aperçu des 5 premières lignes)
     let tableHeaders = response.data && response.data.length > 0 ? Object.keys(response.data[0]) : [];
@@ -588,7 +581,7 @@ const createDashboardBubble = (response) => {
                     ${divers.analyse_ecart_formule ? `
                     <div class="bg-blue-50/30 p-4 rounded-xl border border-blue-100 flex flex-col justify-between">
                         <div>
-                            <span class="text-[11px] font-bold text-blue-700 uppercase tracking-wider block mb-1">📉 Analyse de l'Écart</span>
+                            <span class="text-[11px] font-bold text-indigo-700 uppercase tracking-wider block mb-1">📉 Analyse de l'Écart</span>
                             <p class="text-xs text-gray-600 leading-relaxed">${divers.analyse_ecart_formule}</p>
                         </div>
                     </div>` : ''}
@@ -606,7 +599,7 @@ const createDashboardBubble = (response) => {
                     ${divers.benchmarking_sales ? `
                     <div class="bg-purple-50/30 p-4 rounded-xl border border-purple-100 flex flex-col justify-between">
                         <div>
-                            <span class="text-[11px] font-bold text-purple-700 uppercase tracking-wider block mb-1">🏆 Benchmarking KPI</span>
+                            <span class="text-[11px] font-bold text-indigo-700 uppercase tracking-wider block mb-1">🏆 Benchmarking KPI</span>
                             <p class="text-xs text-gray-600 leading-relaxed">${divers.benchmarking_sales}</p>
                         </div>
                     </div>` : ''}
@@ -615,7 +608,6 @@ const createDashboardBubble = (response) => {
             </div>
         `;
     }
-
     // 6. Pied de page technique (Accès SQL)
     let metaHtml = `
         <div class="w-full space-y-2 border-t border-gray-100 pt-3">
@@ -645,12 +637,137 @@ const createDashboardBubble = (response) => {
     dashboardDiv.appendChild(dataStore);
 
     chatBox.appendChild(dashboardDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;*/
+    chatBox.scrollTop = chatBox.scrollHeight;
 
     // =========================================================================
-    // 7. ENGIN GRAPHIQUE CORRIGÉ (SÉRIE COMPLÈTE JANV-DÉC)
+    // 7. ENGIN GRAPHIQUE CORRIGÉ 
     // =========================================================================
+    // 7. ENGIN GRAPHIQUE HISTORIQUE & ANNUEL OPTIMISÉ
     if (chartHtml) {
+        try {
+            if (typeof Chart === 'undefined') throw new Error("Chart.js indisponible");
+            
+            const ctx = document.getElementById(`${uniqueId}-canvas`).getContext('2d');
+            
+            // Récupération des clés réellement retournées dans le tableau de données
+            const clesReelles = response.data && response.data.length > 0 ? Object.keys(response.data[0]) : [];
+            
+            let xKey = response.chart_config.x_axis;
+            let yKey = response.chart_config.y_axis;
+
+            // SÉCURITÉ : Recalage automatique en cas d'erreur de config de l'IA
+            if (!clesReelles.includes(xKey)) {
+                xKey = clesReelles.find(k => ['periode', 'mois', 'annee', 'date'].includes(k.toLowerCase())) || clesReelles[0];
+            }
+            if (!clesReelles.includes(yKey)) {
+                yKey = clesReelles.find(k => k.toLowerCase().includes('ht') || k.toLowerCase().includes('ttc') || k.toLowerCase().includes('total') || typeof response.data[0][k] === 'number') || clesReelles[1];
+            }
+
+            const nomAxeXLower = String(xKey).toLowerCase();
+            const estTemporel = ['mois', 'annee', 'num_mois', 'periode', 'date'].includes(nomAxeXLower);
+            
+            // 🔴 LE FIX : On détecte si on analyse une évolution stricte par ANNEE (sans mois)
+            // Ou si le jeu de données comporte plus de 12 lignes chronologiques.
+            const estVueAnnuellePure = nomAxeXLower === 'annee';
+            const estHistoriqueLong = nomAxeXLower === 'periode' || estVueAnnuellePure || (response.data && response.data.length > 12);
+
+            let labelsFinal = [];
+            let donneesFinal = [];
+            let optionsGraphique = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 9, weight: '600' } }
+                    },
+                    y: { 
+                        border: { dash: [4, 4] }, 
+                        grid: { color: '#F3F4F6' }, 
+                        ticks: { font: { size: 10, weight: '500' } } 
+                    }
+                }
+            };
+
+            // 2. AIGUILLAGE CHRONOLOGIQUE RAFFINÉ
+            if (estTemporel && !estHistoriqueLong) {
+                // --- MODE A : CADRAGE CALENDAIRE STRICT (Vue Intra-Annuelle Janv-Déc) ---
+                labelsFinal = ["Janv", "Févr", "Mars", "Avri", "Mai", "Juin", "Juil", "Août", "Sept", "Octo", "Nove", "Déce"];
+                donneesFinal = Array(12).fill(null);
+
+                response.data.forEach(item => {
+                    let valeurX = String(item[xKey] || '');
+                    let indexMois = -1;
+                    let matchMois = valeurX.match(/-(\d{2})/);
+                    if (matchMois) indexMois = parseInt(matchMois[1], 10) - 1;
+                    else { let c = parseInt(valeurX.replace(/\D/g, ''), 10); if (c >= 1 && c <= 12) indexMois = c - 1; }
+                    
+                    if (indexMois >= 0 && indexMois <= 11) {
+                        let vY = item[yKey];
+                        donneesFinal[indexMois] = (vY !== null && !isNaN(vY)) ? Number(vY) : null;
+                    }
+                });
+                optionsGraphique.scales.x.ticks.autoSkip = false;
+            } 
+            else if (estTemporel && estHistoriqueLong) {
+                // --- MODE B : CHRONOLOGIE CONTINUE / ÉVOLUTION PAR ANNÉES ---
+                // 🔴 ICI : Au lieu de forcer Janv-Déc, on extrait directement les années (2021, 2022...) ou les périodes longues
+                labelsFinal = response.data.map(item => String(item[xKey] || ''));
+                donneesFinal = response.data.map(item => {
+                    let vY = item[yKey];
+                    return (vY !== null && !isNaN(vY)) ? Number(vY) : 0;
+                });
+                
+                // Si on a peu d'années (ex: 5 ans), on affiche tout sans sauter d'étiquettes
+                optionsGraphique.scales.x.ticks.autoSkip = labelsFinal.length > 12;
+                optionsGraphique.scales.x.ticks.maxTicksLimit = 15;
+            } 
+            else {
+                // --- MODE C : DIMENSIONS CATEGORIELLES (Fournisseurs, Clients...) ---
+                labelsFinal = response.data.map(item => String(item[xKey] || 'Inconnu'));
+                donneesFinal = response.data.map(item => {
+                    let vY = item[yKey];
+                    return (vY !== null && !isNaN(vY)) ? Number(vY) : 0;
+                });
+                if (response.visual_type === 'bar_chart') {
+                    optionsGraphique.indexAxis = 'y';
+                    optionsGraphique.scales.y.grid = { display: false };
+                }
+            }
+
+            // 3. ENVOI AU MOTEUR CANVAS
+            let existingChart = Chart.getChart(ctx.canvas);
+            if (existingChart) existingChart.destroy();
+
+            // On force un graphique de type Histogramme (bar) si c'est une comparaison d'années, plus lisible qu'une ligne continue
+            const typeGraphe = estVueAnnuellePure ? 'bar' : (response.visual_type === 'line_chart' ? 'line' : 'bar');
+
+            new Chart(ctx, {
+                type: typeGraphe,
+                data: {
+                    labels: labelsFinal,
+                    datasets: [{
+                        label: String(yKey).replace(/_/g, ' ').toUpperCase(),
+                        data: donneesFinal,
+                        borderColor: '#10B981',
+                        backgroundColor: typeGraphe === 'line' ? 'rgba(16, 185, 129, 0.05)' : '#10B981',
+                        borderWidth: 1.5,
+                        tension: 0.2,
+                        fill: typeGraphe === 'line',
+                        spanGaps: true
+                    }]
+                },
+                options: optionsGraphique
+            });
+
+        } catch (e) {
+            console.error("Chart Error:", e);
+        }
+    }
+
+
+    /*if (chartHtml) {
         try {
             if (typeof Chart === 'undefined') throw new Error("Chart.js indisponible");
             
@@ -665,208 +782,98 @@ const createDashboardBubble = (response) => {
                 yKey = clesReelles.find(k => typeof response.data[0][k] === 'number') || clesReelles[1];
             }
 
-            // Labels compressés fixes pour optimiser l'espace du bloc
-            const nomsMoisFr = ["Janv", "Févr", "Mars", "Avri", "Mai", "Juin", "Juil", "Août", "Sept", "Octo", "Nove", "Déce"];
-            
-            // Initialisation stricte à null
-            let donneesCalendrier = Array(12).fill(null);
+            // Détection : Est-ce une analyse temporelle (Mois, Année, Période) ?
+            const estTemporel = ['mois', 'annee', 'num_mois', 'periode', 'date'].includes(String(xKey).toLowerCase());
 
-            response.data.forEach(item => {
-                let valeurX = String(item[xKey] || '');
-                let indexMois = -1;
-                let matchMois = valeurX.match(/-(\d{2})/);
+            let labelsFinal = [];
+            let donneesFinal = [];
+            let optionsGraphique = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 9, weight: '600' } }
+                    },
+                    y: { 
+                        border: { dash: [4, 4] }, 
+                        grid: { color: '#F3F4F6' }, 
+                        ticks: { font: { size: 10, weight: '500' } } 
+                    }
+                }
+            };
+
+            if (estTemporel) {
+                // --- MODE A : LOGIQUE CALENDAIRE FIXE (Janv-Déc) ---
+                labelsFinal = ["Janv", "Févr", "Mars", "Avri", "Mai", "Juin", "Juil", "Août", "Sept", "Octo", "Nove", "Déce"];
+                donneesFinal = Array(12).fill(null);
+
+                response.data.forEach(item => {
+                    let valeurX = String(item[xKey] || '');
+                    let indexMois = -1;
+                    let matchMois = valeurX.match(/-(\d{2})/);
+                    
+                    if (matchMois) {
+                        indexMois = parseInt(matchMois[1], 10) - 1;
+                    } else { 
+                        let c = parseInt(valeurX.replace(/\D/g, ''), 10); 
+                        if (c >= 1 && c <= 12) indexMois = c - 1; 
+                    }
+
+                    if (indexMois >= 0 && indexMois <= 11) {
+                        let vY = item[yKey];
+                        donneesFinal[indexMois] = (vY !== null && !isNaN(vY)) ? Number(vY) : null;
+                    }
+                });
                 
-                if (matchMois) {
-                    indexMois = parseInt(matchMois[1], 10) - 1;
-                } else { 
-                    let c = parseInt(valeurX.replace(/\D/g, ''), 10); 
-                    if (c >= 1 && c <= 12) indexMois = c - 1; 
-                }
-
-                if (indexMois >= 0 && indexMois <= 11) {
+                optionsGraphique.scales.x.ticks.autoSkip = false; // Forcer l'affichage de chaque mois
+            } else {
+                // --- MODE B : LOGIQUE DYNAMIQUE (Top Fournisseurs, Clients, Canaux...) ---
+                labelsFinal = response.data.map(item => String(item[xKey] || 'Inconnu'));
+                donneesFinal = response.data.map(item => {
                     let vY = item[yKey];
-                    donneesCalendrier[indexMois] = (vY !== null && !isNaN(vY)) ? Number(vY) : null;
-                }
-            });
+                    return (vY !== null && !isNaN(vY)) ? Number(vY) : 0;
+                });
 
+                // Optimisation visuelle : Si labels textuels longs, passer en barres horizontales
+                if (response.visual_type === 'bar_chart') {
+                    optionsGraphique.indexAxis = 'y'; // Barres horizontales très lisibles pour les noms de fournisseurs
+                    optionsGraphique.scales.y.grid = { display: false }; // Nettoyer l'axe des noms
+                }
+            }
+
+            // Gestion de l'instance existante de Chart
             let existingChart = Chart.getChart(ctx.canvas);
             if (existingChart) existingChart.destroy();
+
+            // Génération de couleurs adaptatives (Palette HSL pour le mode classement non-temporel)
+            const couleursPalette = estTemporel 
+                ? '#10B981' 
+                : labelsFinal.map((_, i) => `hsl(${(i * 360) / labelsFinal.length}, 65%, 55%)`);
 
             new Chart(ctx, {
                 type: response.visual_type === 'line_chart' ? 'line' : 'bar',
                 data: {
-                    labels: nomsMoisFr, 
+                    labels: labelsFinal, 
                     datasets: [{
-                        label: String(yKey).toUpperCase(),
-                        data: donneesCalendrier,
+                        label: String(yKey).replace(/_/g, ' ').toUpperCase(),
+                        data: donneesFinal,
                         borderColor: '#10B981',
-                        backgroundColor: response.visual_type === 'line_chart' ? 'rgba(16, 185, 129, 0.02)' : '#10B981',
-                        borderWidth: 2,
+                        backgroundColor: response.visual_type === 'line_chart' ? 'rgba(16, 185, 129, 0.05)' : couleursPalette,
+                        borderWidth: 1.5,
                         tension: 0.3,
                         fill: response.visual_type === 'line_chart',
-                        spanGaps: true // Relie les points distants sans casser la courbe
+                        spanGaps: true
                     }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { 
-                        legend: { display: false } 
-                    },
-                    scales: {
-                        x: {
-                            grid: { display: false },
-                            ticks: {
-                                font: { size: 9, weight: '600' },
-                                maxRotation: 45,
-                                minRotation: 0,
-                                autoSkip: false // Force l'affichage de CHAQUE mois
-                            }
-                        },
-                        y: { 
-                            border: { dash: [4, 4] }, 
-                            grid: { color: '#F3F4F6' }, 
-                            ticks: { font: { size: 10, weight: '500' } } 
-                        }
-                    }
-                }
+                options: optionsGraphique
             });
         } catch (e) { 
             console.error("Chart Error:", e); 
         }
-    }
+    }*/
 };
-
-
-    // Optimiser pour ajouter les conseil de l'IA
-    /*const createDashboardBubble = (response) => {
-        const uniqueId = 'chart-' + Date.now();
-        const dashboardDiv = document.createElement('div');
-        dashboardDiv.className = "flex flex-col items-start mb-4 w-full max-w-[85%] bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-4";
-
-        let actionsHtml = `
-            <div class="flex flex-wrap items-center justify-between w-full border-b border-gray-100 pb-2 text-xs">
-                <span class="font-bold text-gray-700 uppercase tracking-wider">📊 Résultat Analytique</span>
-                <div class="flex space-x-2">
-                    <button onclick="exportDashboardExcel('${uniqueId}')" class="bg-green-600 hover:bg-green-700 text-white px-2.5 py-1 rounded font-medium transition flex items-center gap-1 shadow-sm">📥 Excel</button>
-                    <button onclick="exportDashboardPowerBI('${uniqueId}')" class="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-2.5 py-1 rounded font-medium transition flex items-center gap-1 shadow-sm">📊 Power BI (CSV)</button>
-                </div>
-            </div>
-        `;
-
-        let chartHtml = '';
-        if (response.visual_type === 'line_chart' || response.visual_type === 'bar_chart') {
-            chartHtml = `
-                <div class="w-full bg-gray-50 p-2 rounded-xl border border-gray-100 h-64">
-                    <canvas id="${uniqueId}-canvas"></canvas>
-                </div>
-            `;
-        }
-
-        let tableHeaders = Object.keys(response.data[0] || {});
-        let tableRows = response.data.slice(0, 5).map(row => {
-            return `<tr>${tableHeaders.map(h => `<td class="px-3 py-1.5 border-b border-gray-100 text-gray-600">${row[h] !== null ? row[h] : ''}</td>`).join('')}</tr>`;
-        }).join('');
-
-        let tableHtml = `
-            <div class="w-full overflow-x-auto border border-gray-100 rounded-xl">
-                <table class="w-full text-left text-xs border-collapse">
-                    <thead>
-                        <tr class="bg-gray-50 text-gray-500 font-semibold uppercase tracking-wider">
-                            ${tableHeaders.map(h => `<th class="px-3 py-2 border-b border-gray-200">${h}</th>`).join('')}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${tableRows || '<tr><td colspan="100%" class="text-center py-4 text-gray-400">Aucune donnée</td></tr>'}
-                    </tbody>
-                </table>
-                ${response.data.length > 5 ? `<div class="text-[10px] text-gray-400 p-2 text-right bg-gray-50 border-t border-gray-100">Et ${response.data.length - 5} lignes supplémentaires (incluses dans l'export)</div>` : ''}
-            </div>
-        `;
-
-        let metaHtml = `
-            <div class="text-[10px] text-gray-400 w-full flex justify-between items-center bg-gray-50 p-1.5 rounded-lg border border-gray-100">
-                <span>Base(s) : <b class="text-gray-500">${response.dbs_utilisees}</b></span>
-                <span class="cursor-help underline" title="${response.sql_genere}">Voir la requête SQL</span>
-            </div>
-        `;
-
-        dashboardDiv.innerHTML = actionsHtml + chartHtml + tableHtml + metaHtml;
-
-        const dataStore = document.createElement('script');
-        dataStore.id = `${uniqueId}-data`;
-        dataStore.type = 'application/json';
-        dataStore.text = JSON.stringify(response.data);
-        dashboardDiv.appendChild(dataStore);
-
-        chatBox.appendChild(dashboardDiv);
-        chatBox.scrollTop = chatBox.scrollHeight;
-
-        if (chartHtml) {
-            try {
-                if (typeof Chart === 'undefined') throw new Error("La bibliothèque Chart.js n'est pas chargée.");
-                if (!response.data || response.data.length === 0) throw new Error("Aucune donnée disponible pour tracer le graphique.");
-
-                const ctx = document.getElementById(`${uniqueId}-canvas`).getContext('2d');
-                const clesReelles = Object.keys(response.data[0]);
-                let xKey = response.chart_config.x_axis;
-                let yKey = response.chart_config.y_axis;
-
-                if (!clesReelles.includes(xKey)) xKey = clesReelles[0];
-                if (!clesReelles.includes(yKey)) {
-                    yKey = clesReelles.find(k => typeof response.data[0][k] === 'number') || clesReelles[1] || clesReelles[0];
-                }
-
-                const labels = response.data.map(item => item[xKey] !== null ? String(item[xKey]) : '');
-                const datasetData = response.data.map(item => {
-                    let val = item[yKey];
-                    return val !== null && !isNaN(val) ? Number(val) : 0;
-                });
-
-                let existingChart = Chart.getChart(`${uniqueId}-canvas`);
-                if (existingChart) existingChart.destroy();
-
-                new Chart(ctx, {
-                    type: response.visual_type === 'line_chart' ? 'line' : 'bar',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: String(yKey).toUpperCase(),
-                            data: datasetData,
-                            borderColor: '#10B981',
-                            backgroundColor: response.visual_type === 'line_chart' ? 'rgba(16, 185, 129, 0.1)' : '#10B981',
-                            borderWidth: 2,
-                            tension: 0.3,
-                            fill: response.visual_type === 'line_chart'
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: {
-                            legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 10 } } },
-                            tooltip: { enabled: true }
-                        },
-                        scales: {
-                            x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
-                            y: { beginAtZero: true, ticks: { font: { size: 10 } } }
-                        }
-                    }
-                });
-            } catch (err) {
-                console.error("Détail du blocage Chart.js :", err);     
-                const canvasContainer = document.getElementById(`${uniqueId}-canvas`)?.parentElement;
-                if (canvasContainer) {
-                    canvasContainer.innerHTML = `
-                        <div class="flex flex-col items-center justify-center h-full text-center p-4">
-                            <span class="text-xs text-gray-400 font-medium">⚠️ Graphique indisponible</span>
-                            <span class="text-[10px] text-gray-400 mt-1">Les données brutes restent exploitables et exportables ci-dessous.</span>
-                        </div>
-                    `;
-                }
-            }
-        }
-    };*/
 
     // 4. Événement Soumission du Message (Ajax Fetch)
     form.addEventListener('submit', function(e) {
@@ -976,465 +983,6 @@ function toggleMessage(button) {
         button.textContent = 'Voir plus';
     }
 }
+
     </script>
-    {% comment %} <script>
-document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('chat-form');
-    const messageInput = document.getElementById('message');
-    const chatBox = document.getElementById('chat-box');
-    const loading = document.getElementById('loading');
-    //const submitBtn = chatForm.querySelector('button[type="submit"]');
-
-    if (!form || !messageInput || !chatBox) return;
-
-    //----- UTILITAIRES--------
-
-    const getTime = () => {
-        const now = new Date();
-        return now.getHours() + ':' + String(now.getMinutes()).padStart(2, '0');
-    };
-
-    const scrollToBottom = () => {
-        chatBox.scrollTo({
-            top: chatBox.scrollHeight,
-            behavior: "smooth"
-        });
-    };
-
-    // ---- DATE ACTUELLE---------------------------
-    const dateElement = document.getElementById('current-date');
-    if (dateElement) {
-        const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-        dateElement.textContent = new Date().toLocaleDateString('fr-FR', options);
-    }
-
-    //--- SUBMIT --------------
-        const createMessageBubble = (text, sender = "system") => {
-        const wrapper = document.createElement('div');
-        wrapper.className = sender === "user"
-            ? 'flex flex-col items-end'
-            : 'flex flex-col items-start';
-
-        const bubble = document.createElement('div');
-        bubble.className = sender === "user"
-            ? 'bg-green-200 text-gray-800 px-4 py-2 rounded-2xl max-w-[70%]'
-            : 'bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl max-w-[70%]';
-
-        bubble.textContent = text;
-
-        const time = document.createElement('div');
-        time.className = 'text-gray-400 text-xs mt-1';
-        time.textContent = getTime();
-
-        wrapper.appendChild(bubble);
-        wrapper.appendChild(time);
-
-        chatBox.appendChild(wrapper);
-        scrollToBottom();
-    };
-
-    
-    const createTable = (data, sqlGenere = "", dbsUtilisees = "") => {
-    if (!data || !data.length) {
-        createMessageBubble("Aucun résultat trouvé.");
-        return;
-    }
-
-    const wrapper = document.createElement("div");
-    wrapper.className = "flex flex-col items-start mb-2 w-full";
-
-    const bubble = document.createElement("div");
-    bubble.className = "bg-gray-100 text-gray-800 px-4 py-2 rounded-2xl max-w-[85%] w-full";
-
-    // ID unique requis pour l'export Excel
-    const timestampId = "table_" + Date.now();
-
-    // 🟢 EN-TÊTE TECHNIQUE MINIATURE + BOUTON EXPORT COMPACT
-    if (dbsUtilisees || sqlGenere) {
-        const testContainer = document.createElement('div');
-        testContainer.className = "mb-2 pb-1.5 border-b border-gray-200 text-[10px] text-gray-400 font-sans space-y-1";
-
-        // Ligne flexible pour regrouper le nom des bases et le bouton Export miniature
-        const topRow = document.createElement('div');
-        topRow.className = "flex justify-between items-center w-full gap-2";
-
-        if (dbsUtilisees) {
-            const dbSpan = document.createElement('span');
-            dbSpan.className = "font-medium truncate";
-            dbSpan.innerHTML = `Base(s) : <span class="text-teal-600 font-semibold font-mono bg-teal-50 px-1 py-0.5 rounded border border-teal-100">${dbsUtilisees}</span>`;
-            topRow.appendChild(dbSpan);
-        }
-
-     // --- BOUTON EXPORT EXCEL MINIATURE ET SÉCURISÉ ---
-const exportBtn = document.createElement('a');
-// 🟢 Sécurité absolue : L'URL ne contient plus aucun code SQL modifiable
-exportBtn.href = `{% url 'get_response' %}?export=excel`;
-exportBtn.target = "_blank"; 
-exportBtn.className = "flex items-center gap-1 text-[10px] font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50/50 hover:bg-emerald-100 border border-emerald-200/60 rounded px-1.5 py-0.5 transition-colors cursor-pointer shrink-0";
-exportBtn.innerHTML = `
-    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-    </svg>
-    Export
-`;
-
-        topRow.appendChild(exportBtn);
-        testContainer.appendChild(topRow);
-
-        // Affichage miniature de la requête SQL générée
-        if (sqlGenere) {
-            const sqlSpan = document.createElement('span');
-            sqlSpan.className = "block text-gray-500 whitespace-pre-wrap font-mono bg-gray-50 p-1.5 rounded border border-gray-200 mt-1 text-[9px] leading-tight select-all";
-            sqlSpan.textContent = sqlGenere;
-            testContainer.appendChild(sqlSpan);
-        }
-
-        bubble.appendChild(testContainer);
-    }
-
-    // 📊 TABLEAU DE DONNÉES (Inchangé)
-    const tableWrapper = document.createElement("div");
-    tableWrapper.className = "overflow-auto max-h-80";
-
-    const table = document.createElement("table");
-    table.id = timestampId; // Liaison avec le script d'export
-    table.className = "min-w-full border-separate border-spacing-0 text-sm";
-
-    const thead = document.createElement("thead");
-    const headerRow = document.createElement("tr");
-
-    Object.keys(data[0] || {}).forEach(col => {
-        const th = document.createElement("th");
-        th.className = "border px-3 py-2 bg-indigo-100 text-indigo-700 font-semibold text-left";
-        th.textContent = col;
-        headerRow.appendChild(th);
-    });
-
-    thead.appendChild(headerRow);
-    table.appendChild(thead);
-
-    const tbody = document.createElement("tbody");
-    data.forEach((row, i) => {
-        const tr = document.createElement("tr");
-        tr.className = i % 2 === 0 ? "bg-gray-50" : "bg-white";
-
-        Object.values(row).forEach(value => {
-            const td = document.createElement("td");
-            td.className = "border px-3 py-2 text-gray-800";
-            td.textContent = value;
-            tr.appendChild(td);
-        });
-        tbody.appendChild(tr);
-    });
-
-    table.appendChild(tbody);
-    tableWrapper.appendChild(table);
-    bubble.appendChild(tableWrapper);
-
-    const time = document.createElement("div");
-    time.className = "text-gray-400 text-xs mt-1";
-    time.textContent = getTime();
-
-    wrapper.appendChild(bubble);
-    wrapper.appendChild(time);
-
-    chatBox.appendChild(wrapper);
-    scrollToBottom();
-};
-
-    // Bouton SUBMIT du formulaire de chat
-form.addEventListener('submit', function(e){
-     // 1. Arrêt immédiat et total de la propagation de l'événement natif
-    e.preventDefault();
-    e.stopPropagation();
-
-     // 2. Verrouillage du bouton pour empêcher le double-clic frénétique
-   // if (submitBtn) submitBtn.disabled = true;
-
-    const msg = messageInput.value.trim();
-    if (!msg) return;
-
-    createMessageBubble(msg, "user");
-    messageInput.value = "";
-
-    loading.classList.remove('hidden');
-
-    fetch("{% url 'get_response' %}", {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRFToken': '{{ csrf_token }}'
-        },
-        body: new URLSearchParams({message: msg})
-    })
-    .then(response => {
-        // 🟢 CORRECTION : On ne bloque plus avec "throw new Error" si response.ok est faux.
-        // Django envoie un JSON d'erreur valide avec un code HTTP 500 ou 503.
-        // On force la lecture du JSON dans tous les cas.
-        return response.json().catch(() => {
-            // Si le serveur crache un HTML brut (vrai crash Django), on bascule sur une erreur générique
-            throw new Error("Erreur brute du serveur (HTML)");
-        });
-    })
-    .then(data => {
-        loading.classList.add('hidden');
-        //if (submitBtn) submitBtn.disabled = false;
-        // 🟢 INTERCEPTION PRIORITAIRE DES ERREURS PROPRES DU SERVEUR
-
-        if (data.status === "error" || data.type === "error") {
-            const txtErreur = data.message || data.data || "Une erreur inconnue est survenue.";
-            
-            if (typeof window.alertError === 'function') {
-                window.alertError(txtErreur);
-            } else if (typeof alertError === 'function') {
-                alertError(txtErreur);
-            }
-            
-            createMessageBubble("⚠ " + txtErreur, "system");
-            return; // Arrêt immédiat
-        }
-
-        // TRAITEMENT DES CAS DE SUCCÈS
-
-        // 1. Cas : Aucun agent sélectionné (Bascule sur secours)
-        if (data.type === "no_agent") {
-            if (typeof window.alertInfo === 'function') {
-                window.alertInfo(data.data + " Utilisation de l'assistant par défaut.");
-            } else {
-                alertInfo(data.data + " Utilisation de l'assistant par défaut.");
-            }
-            createMessageBubble(data.text || data.data, "system");
-        }
-        // 🟢 NOUVEAU CAS : REQUÊTE ANALYTIQUE (Tableau + Graphes + Exports)
-        else if (data.type === "sql_dashboard") {
-            createDashboardBubble(data);
-        }
-        // 2. Cas : Requête SQL réussie
-        else if (data.type === "sql") {
-            createTable(data.data, data.sql_genere, data.dbs_utilisees); 
-        }
-        // 3. Cas : Réponse Chat réussie (Agent actif trouvé)
-        else if (data.type === "chat") {
-            createMessageBubble(data.data, "system");
-        }
-        // 4. Cas : Sécurité pour types inconnus
-        else {
-            createMessageBubble("Réponse inattendue.");
-            console.log("Données reçues inconnues :", data);
-        }
-    })
-    .catch(err => {
-        // Ce bloc ne s'exécutera désormais QUE si le réseau est totalement coupé (pas d'internet)
-        // ou si Django crache une page d'erreur de debug orange (Erreur HTML brute)
-        loading.classList.add('hidden');
-        //if (submitBtn) submitBtn.disabled = false;
-        if (typeof window.alertError === 'function') {
-            window.alertError("Impossible de joindre le serveur.");
-        } else {
-            alertError("Impossible de joindre le serveur.");
-        }
-        createMessageBubble("Erreur de communication serveur.", "system");
-        console.error(err);
-    });
-});
-
-
-// 🟢 FONCTION DYNAMIQUE POUR LE DASHBOARD (Courbes + Boutons d'export)
-function createDashboardBubble(response) {
-    const chatBox = document.getElementById('chat-box');
-    const uniqueId = 'chart-' + Date.now();
-
-    const dashboardDiv = document.createElement('div');
-    dashboardDiv.className = "flex flex-col items-start mb-4 w-full max-w-[85%] bg-white p-4 rounded-2xl border border-gray-200 shadow-sm space-y-4";
-
-    let actionsHtml = `
-        <div class="flex flex-wrap items-center justify-between w-full border-b border-gray-100 pb-2 text-xs">
-            <span class="font-bold text-gray-700 uppercase tracking-wider">📊 Résultat Analytique</span>
-            <div class="flex space-x-2">
-                <button onclick="exportDashboardExcel('${uniqueId}')" class="bg-green-600 hover:bg-green-700 text-white px-2.5 py-1 rounded font-medium transition flex items-center gap-1 shadow-sm">
-                    📥 Excel
-                </button>
-                <button onclick="exportDashboardPowerBI('${uniqueId}')" class="bg-yellow-500 hover:bg-yellow-600 text-gray-900 px-2.5 py-1 rounded font-medium transition flex items-center gap-1 shadow-sm">
-                    📊 Power BI (CSV)
-                </button>
-            </div>
-        </div>
-    `;
-
-    let chartHtml = '';
-    if (response.visual_type === 'line_chart' || response.visual_type === 'bar_chart') {
-        chartHtml = `
-            <div class="w-full bg-gray-50 p-2 rounded-xl border border-gray-100 h-64">
-                <canvas id="${uniqueId}-canvas"></canvas>
-            </div>
-        `;
-    }
-
-    let tableHeaders = Object.keys(response.data[0] || {});
-    let tableRows = response.data.slice(0, 5).map(row => {
-        return `<tr>${tableHeaders.map(h => `<td class="px-3 py-1.5 border-b border-gray-100 text-gray-600">${row[h] !== null ? row[h] : ''}</td>`).join('')}</tr>`;
-    }).join('');
-
-    let tableHtml = `
-        <div class="w-full overflow-x-auto border border-gray-100 rounded-xl">
-            <table class="w-full text-left text-xs border-collapse">
-                <thead>
-                    <tr class="bg-gray-50 text-gray-500 font-semibold uppercase tracking-wider">
-                        ${tableHeaders.map(h => `<th class="px-3 py-2 border-b border-gray-200">${h}</th>`).join('')}
-                    </tr>
-                </thead>
-                <tbody>
-                    ${tableRows || '<tr><td colspan="100%" class="text-center py-4 text-gray-400">Aucune donnée</td></tr>'}
-                </tbody>
-            </table>
-            ${response.data.length > 5 ? `<div class="text-[10px] text-gray-400 p-2 text-right bg-gray-50 border-t border-gray-100">Et ${response.data.length - 5} lignes supplémentaires (incluses dans l'export)</div>` : ''}
-        </div>
-    `;
-
-    let metaHtml = `
-        <div class="text-[10px] text-gray-400 w-full flex justify-between items-center bg-gray-50 p-1.5 rounded-lg border border-gray-100">
-            <span>Base(s) : <b class="text-gray-500">${response.dbs_utilisees}</b></span>
-            <span class="cursor-help underline" title="${response.sql_genere}">Voir la requête SQL</span>
-        </div>
-    `;
-
-    dashboardDiv.innerHTML = actionsHtml + chartHtml + tableHtml + metaHtml;
-    
-    const dataStore = document.createElement('script');
-    dataStore.id = `${uniqueId}-data`;
-    dataStore.type = 'application/json';
-    dataStore.text = JSON.stringify(response.data);
-    dashboardDiv.appendChild(dataStore);
-
-    chatBox.appendChild(dashboardDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
-
-    // TRACÉ SÉCURISÉ ET TOLÉRANT AUX ERREURS DE L'IA (CHART.JS)
-    if (chartHtml) {
-        try {
-            if (typeof Chart === 'undefined') throw new Error("La bibliothèque Chart.js n'est pas chargée.");
-            if (!response.data || response.data.length === 0) throw new Error("Aucune donnée disponible pour tracer le graphique.");
-
-            const ctx = document.getElementById(`${uniqueId}-canvas`).getContext('2d');
-            
-            // 🟢 CORRECTIF 1 : Analyse automatique des clés réelles si l'IA s'est trompée dans x_axis/y_axis
-            const clesReelles = Object.keys(response.data[0]);
-            let xKey = response.chart_config.x_axis;
-            let yKey = response.chart_config.y_axis;
-
-            // Si la clé fournie par l'IA n'existe pas dans les données, on prend la première colonne disponible
-            if (!clesReelles.includes(xKey)) {
-                xKey = clesReelles[0];
-            }
-            // Si la clé d'ordonnée n'existe pas, on cherche la première colonne numérique, sinon la deuxième colonne
-            if (!clesReelles.includes(yKey)) {
-                yKey = clesReelles.find(k => typeof response.data[0][k] === 'number') || clesReelles[1] || clesReelles[0];
-            }
-
-            // 🟢 CORRECTIF 2 : Extraction et nettoyage des données pour Chart.js
-            const labels = response.data.map(item => item[xKey] !== null ? String(item[xKey]) : '');
-            const datasetData = response.data.map(item => {
-                let val = item[yKey];
-                return val !== null && !isNaN(val) ? Number(val) : 0; // Force le type numérique
-            });
-
-            // Destruction d'un éventuel graphique fantôme sur le même canvas (sécurité)
-            let existingChart = Chart.getChart(`${uniqueId}-canvas`);
-            if (existingChart) existingChart.destroy();
-
-            // Création du graphique avec la structure standardisée v3/v4
-            new Chart(ctx, {
-                type: response.visual_type === 'line_chart' ? 'line' : 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: String(yKey).toUpperCase(),
-                        data: datasetData,
-                        borderColor: '#10B981', // Vert émeraude
-                        backgroundColor: response.visual_type === 'line_chart' ? 'rgba(16, 185, 129, 0.1)' : '#10B981',
-                        borderWidth: 2,
-                        tension: 0.3, // Courbe adoucie
-                        fill: response.visual_type === 'line_chart'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 10 } } },
-                        tooltip: { enabled: true }
-                    },
-                    scales: {
-                        x: { grid: { display: false }, ticks: { font: { size: 10 }, maxRotation: 45 } },
-                        y: { beginAtZero: true, ticks: { font: { size: 10 } } }
-                    }
-                }
-            });
-
-        } catch (err) {
-            // En cas d'échec persistant, affichage de l'erreur exacte dans la console F12 pour déboguer
-            console.error("Détail du blocage Chart.js :", err);
-            
-            const canvasContainer = document.getElementById(`${uniqueId}-canvas`)?.parentElement;
-            if (canvasContainer) {
-                canvasContainer.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-full text-center p-4">
-                        <span class="text-xs text-gray-400 font-medium">⚠️ Graphique indisponible</span>
-                        <span class="text-[10px] text-gray-400 mt-1">Les données brutes restent exploitables et exportables ci-dessous.</span>
-                    </div>
-                `;
-            }
-        }
-    }
-
-}
-
-});
-
-// POUR le petit bouton voir plus 
-function toggleMessage(button) {
-    const container = button.parentElement;
-    const shortText = container.querySelector('.short-text');
-    const fullText = container.querySelector('.full-text');
-    
-    if (fullText.classList.contains('hidden')) {
-        fullText.classList.remove('hidden');
-        shortText.classList.add('hidden');
-        button.textContent = 'Voir moins';
-    } else {
-        fullText.classList.add('hidden');
-        shortText.classList.remove('hidden');
-        button.textContent = 'Voir plus';
-    }
-}
-
-
-// AFficher unnmodal si aucn agent n'est selectionné
-// Écouter les changements sur toutes les cases à cocher du formulaire
-    form.addEventListener('change', function(event) {
-        if (event.target.name === 'active_source') {
-            
-            // Compter le nombre de sources actuellement cochées
-            const checkedSources = form.querySelectorAll('input[name="active_source"]:checked');
-            
-            if (checkedSources.length === 0) {
-                // Modale d'avertissement : Aucune source active
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Aucune source sélectionnée',
-                    text: "Vous n'avez sélectionné aucune source SQL. L'assistant va utiliser l'agent par défaut pour répondre à vos questions.",
-                    confirmButtonColor: '#3085d6',
-                    confirmButtonText: 'Continuer ainsi'
-                }).then((result) => {
-                    // On soumet le formulaire pour enregistrer l'état "aucune source" en BDD
-                    form.submit();
-                });
-            } else {
-                // Si une source est cochée normalement, on valide directement sans modale
-                form.submit();
-            }
-        }
-    });
-
-    </script> {% endcomment %}
 {% endblock content %}

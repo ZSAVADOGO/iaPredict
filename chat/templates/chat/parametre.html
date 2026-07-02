@@ -3,7 +3,7 @@
 <div class="container mx-auto flex flex-row gap-4 h-[600px]"> 
         <div class="flex-1 bg-white rounded-xl shadow-lg p-4 overflow-y-auto min-h-0">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-gray-800">Sources SQL</h3>
+                <h3 class="text-lg font-bold text-gray-500">Sources SQL</h3>
                 <!-- Exemple bouton ajouter -->
                 <a id="openSrcModalBtn"
                    class="source-modal-trigger text-xs bg-teal-600 hover:bg-teal-700 text-white px-3 py-1 rounded-md">
@@ -107,7 +107,7 @@
             <!-- En-tête avec statut dynamique -->
             <div class="flex justify-between items-center mb-4">
                 <div>
-                    <h3 class="text-lg font-bold text-gray-800">🤖 Vos Agents IA Llms</h3>
+                    <h3 class="text-lg font-bold text-gray-500">🤖 Vos Agents IA Llms</h3>
                     <p class="text-xs font-bold text-gray-500 animate-pulse">
                         <span>Statut :</span>
                         {% if active_agent %}
@@ -149,7 +149,8 @@
                                                value="{{ agent.id }}"
                                                {% if agent.is_active %}checked{% endif %}
                                                disabled
-                                               class="accent-teal-600 h-6 w-6 rounded-md border-gray-300 cursor-pointer transition duration-150 ease-in-out focus:ring-teal-500">
+                                               class="accent-teal-600 h-6 w-6 rounded-md border-gray-300 cursor-pointer 
+                                               transition duration-150 ease-in-out focus:ring-teal-500">
                                                {% comment %} class="accent-teal-600 h-3.5 w-3.5 opacity-80 shrink-0 pointer-events-none"> {% endcomment %}
                                         <!-- Conteneur Nom + Modèle -->
                                         <div class="flex items-center gap-2 min-w-0 truncate">

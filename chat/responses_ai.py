@@ -25,11 +25,12 @@ client = OpenAI(api_key=api_key_env)
 # Configuration du mécanisme de tentative automatique
 @retry(
     # Recommence uniquement si c'est une erreur d'API (comme la 503)
-    retry=retry_if_exception_type(APIError), 
+    retry=retry_if_exception_type(APIError),
     # S'arrête après 3 essais infructueux
     stop=stop_after_attempt(3), 
     # Attend 2s, puis 4s entre les tentatives (laisse le serveur respirer)
-    wait=wait_exponential(multiplier=1, min=2, max=10) 
+    wait=wait_exponential(multiplier=1, min=2, max=10)
+
 )
 
 def generate_gemini_response_OLD(user_message):

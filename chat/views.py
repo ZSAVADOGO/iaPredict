@@ -652,7 +652,7 @@ def parametre(request):
         # On appelle la méthode avec les parenthèses () et on ajoute un séparateur
         full_schema_text += db.get_db_schema() + "\n"
 
-    print(f"Structure bdd -> {full_schema_text}")
+    # print(f"Structure bdd -> {full_schema_text}")
 
     return render(
         request,
@@ -1036,12 +1036,6 @@ def recherche_naturelle(request):
 
 @csrf_exempt
 def recherche_naturelle(request):
-    """
-    Contrôleur universel gérant 3 flux :
-    1. Requête SQL manuelle saisie directement par l'utilisateur.
-    2. Réponses textuelles prédéfinies / Chat classique.
-    3. Dashboard Analytique complet généré par l'IA.
-    """
     if request.method != "POST":
         return JsonResponse(
             {
@@ -1146,27 +1140,6 @@ def recherche_naturelle(request):
         # =========================================================================
         else:
             # Préparation des instructions analytiques
-            """instructions_metier = (
-                "\n\n[MISE À JOUR DE LA RÈGLE DE SORTIE - OBLIGATION DE FORMATAGE DASHBOARD C-LEVEL]\n"
-                "Tu dois impérativement analyser la demande de l'utilisateur pour détecter s'il souhaite voir une évolution ou une analyse.\n"
-                "Renvoie STRICTEMENT un objet JSON valide (sans aucun autre texte, introduction ou bloc markdown) structuré ainsi :\n"
-                "{\n"
-                '  "sql": "La requête SQL SELECT générée en respectant scrupuleusement toutes les directives de mapping ci-dessus.",\n'
-                '  "visual_type": "line_chart" (si l\'utilisateur parle d\'évolution, tendance, courbe, chronologie), "bar_chart" (si comparaison ou segmentation), ou "table" (par défaut),\n'
-                '  "x_axis": "Le nom exact de la colonne sélectionnée pour l\'axe des abscisses",\n'
-                '  "y_axis": "Le nom exact de la colonne numérique sélectionnée pour l\'axe des ordonnées",\n'
-                '  "ai_insights": "Rédige ici l\'analyse textuelle basée sur la logique de la requête. Tu dois obligatoirement utiliser ces séparateurs textuels précis :\n'
-                "  **Vision & Interprétation :** (Ton analyse contextuelle du résultat)\n"
-                "  **Conseils stratégiques :** (Tes recommandations sous forme de liste numérotée)\n"
-                '  **Prédictions :** (Les tendances ou événements futurs)",\n'
-                '  "data_governance": "Qualité et traçabilité des données (fraîcheur, valeurs nulles). Si non applicable, mets null.",\n'
-                '  "anomalies_alerts": "Signale tout écart-type suspect, pic ou signal faible. Si aucun, mets null.",\n'
-                '  "financial_impact": "Si applicable (frais, budgets, montants), traduis ce volume en opportunité financière ou ROI. Sinon, mets null.",\n'
-                '  "elasticity_analysis": "Identifie le levier (What-If) permettant de modifier la trajectoire de cette courbe. Sinon, mets null.",\n'
-                '  "system_efficiency": "Diagnostic technique proactif sur la performance de la requête (index, coût CPU)."\n'
-                "}\n"
-                'Si la demande est impossible selon l\'Étape C, génère exactement ce JSON : {"sql": "-- IMPOSSIBLE", "visual_type": "table", "x_axis": null, "y_axis": null, "ai_insights": null, "data_governance": null, "anomalies_alerts": null, "financial_impact": null, "elasticity_analysis": null, "system_efficiency": null}'
-            )"""
             instructions_metier = (
                 "\n\n[MISE À JOUR CRITIQUE DE LA RÈGLE DE SORTIE - FORMAT JSON AVANCÉ C-LEVEL]\n"
                 "Annule et remplace la règle précédente concernant la sortie en texte brut SQL. "
@@ -1249,11 +1222,16 @@ def recherche_naturelle(request):
 
             # 🟢 CAS 3 : L'IA A APPORTÉ UNE RÉPONSE REQUÉRANT UN DASHBOARD ANALYTIQUE COMPLET
             texte_brut = chat_result.get("text", "").strip()
+            print(f"CAS 3 LE texte_brut {texte_brut} ")
 
             try:
                 json_propre = re.sub(r"```json\s*|\s*```", "", texte_brut).strip()
+                print(f"CAS 3 LE json_propre {json_propre} ")
                 meta_data = json.loads(json_propre)
-                requete_sql = meta_data.get("sql", "").strip()
+                #requete_sql = meta_data.get("sql", "").strip()
+                # 🎯 CORRECTION 1 : Nettoyage immédiat lors de l'extraction JSON
+                requete_sql = meta_data.get("sql", "").strip().replace("\\'", "'")
+                print(f"1. LE requete_sql {requete_sql} ")
             except Exception:
                 # Fallback si l'IA s'est trompée et a écrit du SQL hors JSON
                 requete_sql = re.sub(r"```sql\s*|\s*```", "", texte_brut).strip()
@@ -1266,26 +1244,66 @@ def recherche_naturelle(request):
                 meta_divers = meta_data.get("divers")
             else:
                 meta_divers = {}
-                
+
             # Nettoyage de sécurité et élimination des faux positifs (commentaires et point-virgule final)
             sql_nettoye = re.sub(r"--.*$", "", requete_sql.strip(), flags=re.MULTILINE)
             sql_nettoye = re.sub(r"/\*.*?\*/", "", sql_nettoye, flags=re.DOTALL).strip()
+            print(f"2. LE sql_nettoye {sql_nettoye} ")
             if sql_nettoye.endswith(";"):
                 sql_nettoye = sql_nettoye[:-1].strip()
 
             sql_clean_lower = sql_nettoye.lower()
+            print(f"3. LE sql_clean_lower {sql_clean_lower} ")
 
             if "impossible" in sql_clean_lower or not sql_nettoye:
                 return JsonResponse(
                     {
-                        "type": "error",
-                        "data": "Demande de données impossible à mapper vers le catalogue actif.",
+                        "type": "sql_dashboard",
+                        "is_impossible": True,
+                        "data": "Cette demande fait référence à des tables ou des colonnes absentes du catalogue actif.",
                         "agent_name": "Sécurité",
-                    },
+                    }, #Demande de données impossible à mapper vers le catalogue actif.
                     status=400,
                 )
+            
+            """if "impossible" in requete_sql or not sql_nettoye:
+                # 1. Extraction dynamique de la cause écrite par l'agent IA
+                cause_detaillee = "Cette demande fait référence à des tables ou des colonnes absentes du catalogue actif."
+                if ":" in sql_nettoye:
+                    # On récupère tout ce qui est écrit après le premier caractère ':'
+                    cause_detaillee = sql_nettoye.split(":", 1)[1].strip() 
+
+                    # 2. Retour d'un dictionnaire parfaitement conforme pour le composant JavaScript
+                return JsonResponse(
+                    {
+                        "type": "sql_dashboard",
+                        "is_impossible": True,   # ← FLAG EXPLICITE pour le JS
+                        "visual_type": "table",
+                        "chart_config": {"x_axis": None, "y_axis": None},
+                        # On affiche la vraie cause de l'IA de manière élégante à l'écran
+                        "ai_insights": f"⚠️ **Demande Hors Périmètre** : {cause_detaillee}",
+                        "data_governance": "Analyse impossible : les structures requises n'existent pas dans le schéma.",
+                        "anomalies_alerts": "Requête rejetée par le dictionnaire de données actif.",
+                        "financial_impact": None,
+                        "elasticity_analysis": None,
+                        "system_efficiency": None,
+                        "divers": {
+                            "analyse_ecart_formule": None,
+                            "objectifs_mensuels_kpi": None,
+                            "benchmarking_sales": None,
+                        },
+                        "data": [],  # Tableau vide de sécurité pour éviter que le JS boucle dans le vide
+                        "count": 0,
+                        "sql_genere": sql_nettoye,  # Permet de voir le commentaire d'impossibilité dans le viewer SQL
+                        "dbs_utilisees": "Aucune",
+                        "agent_name": "Moteur Décisionnel (Sécurité)",
+                            },
+                            status=200,
+                        ) """  # On renvoie un statut 200 pour que le flux JS traite la réponse normalement
+
 
             mots_extraits = set(re.findall(r"\b[a-z_]+\b", sql_clean_lower))
+            print(f"4. Les mots extraits sont: {mots_extraits} ")
             commandes_interdites = {
                 "delete",
                 "drop",
@@ -1299,26 +1317,42 @@ def recherche_naturelle(request):
             }
             premier_mot = sql_clean_lower.split()[0] if sql_clean_lower.split() else ""
 
-            if (
-                ";" in sql_nettoye
-                or premier_mot != "select"
-                or mots_extraits.intersection(commandes_interdites)
-            ):
+            # 🎯 CORRECTION 1 : Autoriser 'select' OU 'with' comme premier mot
+            if premier_mot not in ["select", "with"]:
                 return JsonResponse(
                     {
                         "type": "error",
-                        "data": "Action bloquée : Seules les requêtes SELECT uniques sont autorisées.",
+                        "data": "Action bloquée : Seules les requêtes SELECT ou WITH de consultation sont autorisées.",
                         "agent_name": "Sécurité",
                     },
                     status=403,
                 )
 
+            # 🎯 CORRECTION 2 : Sécuriser la détection des requêtes multiples (;)
+            # On compte les points-virgules restants après avoir retiré le dernier. 
+            # S'il en reste un au milieu, c'est une tentative de multi-requête (ex: SELECT... ; DROP...)
+            if ";" in sql_nettoye:
+                return JsonResponse(
+                    {
+                        "type": "error",
+                        "data": "Action bloquée : L'exécution de requêtes multiples (;) est strictement interdite.",
+                        "agent_name": "Sécurité",
+                    },
+                    status=403,
+                )
+
+
             # Exécution SQL et construction du Dashboard final
             try:
-                result = run_query(source, requete_sql)
+                # 🎯 CORRECTION 1 : On applique le remplacement forcé des antislashes d'échappement
+                sql_final_execution = sql_nettoye.replace("\\'", "'")
+                print(f"5. LE sql_final_execution avant run_query --> {sql_final_execution} ")
+
+                #result = run_query(source, requete_sql)
+                result = run_query(source, sql_final_execution)
                 limited_result = result[:1000]
-                print(f"AGENT AI Le result --> {result}")
-                print(f"AGENT AI Le limited_result --> {limited_result}")
+                print(f"Apres run_query # Le result --> {result}")
+                print(f"Apres run_query # Le limited_result --> {limited_result}")
                 for row in limited_result:
                     for key, value in row.items():
                         if hasattr(value, "isoformat"):
@@ -1465,13 +1499,100 @@ def get_response(request):
         return JsonResponse(
             {"type": "error", "data": error_msg, "agent_name": "Système"}, status=500
         )
+    
 
-
-# BON car elle permet de scinder le sql pur et la reponse du AI
 def run_query(source, sql):
+    print(f"Le SQL recu dans run_query avant tout debut --> {sql}")
     if not sql or not sql.strip():
         raise ValueError("La requête SQL fournie est vide.")
-    print(f"Le SQL --> {sql}")
+
+    # =========================================================================
+    # 🧹 NETTOYAGE COGNITIF MONO-LIGNE
+    # =========================================================================
+    sql = sql.replace(r"\'", "'").replace(r'\"', '"')
+    
+    sql_nettoye = sql
+    sql_nettoye = re.sub(r"/\*.*?\*/", " ", sql_nettoye, flags=re.DOTALL)
+
+    tokens_mysql = (
+        r"when|else|if|between|and|or|case|then|end|order|group|by|select|"
+        r"from|where|asc|desc|in|like|not|null|is|join|on|having|limit|as"
+    )
+    pattern_mono_ligne = r"--.*?(?=\b(" + tokens_mysql + r")\b|$)"
+    sql_nettoye = re.sub(pattern_mono_ligne, " ", sql_nettoye, flags=re.IGNORECASE)
+    sql_nettoye = re.sub(r"\s+", " ", sql_nettoye).strip()
+    sql_nettoye = re.sub(r";+$", "", sql_nettoye).strip()
+
+    print("\n[DEBUG REQUÊTE NETTOYÉE ENVOYÉE À MYSQL] :")
+    print(f"--> {sql_nettoye} <--\n")
+
+    if not sql_nettoye:
+        raise ValueError("La requête SQL est devenue vide après le nettoyage.")
+
+    # =========================================================================
+    # 🚨 BLINDAGE DE SÉCURITÉ OPTIMISÉ (Gestion des CTE et Sous-requêtes)
+    # =========================================================================
+    sql_clean_lower = sql_nettoye.lower()
+    mots_extraits = set(re.findall(r"\b[a-z_]+\b", sql_clean_lower))
+
+    # Suppression de 'create' et 'replace' de la liste noire s'ils sont dans le corps du texte
+    commandes_interdites = {"delete", "drop", "truncate", "alter", "insert", "grant"}
+
+    contient_commande_update = False
+    if "update" in mots_extraits:
+        # Ignore la fonction native timestampdiff
+        sql_sans_timestampdiff = sql_clean_lower.replace("timestampdiff", "")
+        if "update" in set(re.findall(r"\b[a-z_]+\b", sql_sans_timestampdiff)):
+            contient_commande_update = True
+
+    # Détection fine du premier mot utile (Autorise SELECT et WITH pour les CTE)
+    mots_pivots = sql_clean_lower.lstrip("() ").split()
+    premier_mot = mots_pivots[0] if mots_pivots else ""
+    if premier_mot not in ["select", "with"]:
+        raise PermissionError("Action non autorisée : La requête doit débuter par SELECT ou WITH.")
+
+    # Protection contre l'injection de requêtes multiples (Multi-Query Injection) via le point-virgule
+    # On valide qu'il n'y a pas d'instruction destructive après un point-virgule interne
+    if ";" in sql_nettoye:
+        blocs = sql_nettoye.split(";")
+        for bloc in blocs[1:]:
+            if re.search(r"\b(delete|drop|truncate|alter|insert|update)\b", bloc, re.IGNORECASE):
+                raise PermissionError("Action non autorisée : Multi-requêtes malveillantes détectées.")
+
+    if mots_extraits.intersection(commandes_interdites) or contient_commande_update:
+        raise PermissionError("Action non autorisée : Seules les requêtes de lecture (SELECT/WITH) sont permises.")
+
+    print(f"Le sql_nettoye --> {sql_nettoye}")
+    print(f"Le sql_clean_lower --> {sql_clean_lower}")
+
+    # =========================================================================
+    # ⚡ EXÉCUTION DE LA REQUÊTE NATIVE ET SÉRIALISATION PREMIUM
+    # =========================================================================
+    with open_connection(source) as conn:
+        with conn.cursor() as cursor:
+            # Sécurité contextuelle : Désactive ONLY_FULL_GROUP_BY pour éviter le crash 1055 sur l'agent
+            cursor.execute("SET SESSION sql_mode=(SELECT REPLACE(@@sql_mode,'ONLY_FULL_GROUP_BY',''));")
+            
+            cursor.execute(sql_nettoye)
+            columns = [col[0] for col in cursor.description]
+            rows = cursor.fetchall()
+
+    cleaned_rows = [
+        {
+            columns[i]: (val.decode("utf-8", errors="ignore") if isinstance(val, bytes) else val)
+            for i, val in enumerate(row)
+        }
+        for row in rows
+    ]
+
+    return cleaned_rows
+
+
+# BON mai refuse les requetes complexes
+""" def run_query(source, sql):
+    print(f"Le SQL recu dans run_query avant tout debut --> {sql}")
+    if not sql or not sql.strip():
+        raise ValueError("La requête SQL fournie est vide.")
 
     # =========================================================================
     # 🧹 NETTOYAGE COGNITIF MONO-LIGNE (DICTIONNAIRE DE MOTS-CLÉS MYSQL ENRICHI)
@@ -1566,4 +1687,4 @@ def run_query(source, sql):
         for row in rows
     ]
 
-    return cleaned_rows
+    return cleaned_rows """
