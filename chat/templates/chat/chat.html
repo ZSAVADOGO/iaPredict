@@ -896,9 +896,19 @@ if (response.visual_type === 'line_chart' || response.visual_type === 'bar_chart
             body: new URLSearchParams({message: msg})
         })
         .then(response => {
-            return response.json().catch(() => {
+            /*return response.json().catch(() => {
                 throw new Error("Erreur brute du serveur (HTML)");
+            });*/
+            // 🔴 CRITIQUE 1 : Si le statut HTTP est en erreur (400, 403, 500, etc.)
+        if (!response.ok) {
+            // On extrait le JSON d'erreur du backend et on le propage vers le catch
+            return response.json().then(errData => {
+                throw errData; 
             });
+        }
+        // Si tout est OK (Status 200), on continue normalement
+        return response.json();
+        
         })
         .then(data => {
             loading.classList.add('hidden');
@@ -918,9 +928,16 @@ if (response.visual_type === 'line_chart' || response.visual_type === 'bar_chart
                 if (typeof callInfo === 'function') callInfo(data.data + " Utilisation de l'assistant par défaut.");
                 createMessageBubble(data.text || data.data, "system");
             }
-            else if (data.type === "sql_dashboard") {
+            /*else if (data.type === "sql_dashboard") {
                 createDashboardBubble(data);
+            }*/
+            else if (data.type === "sql_dashboard") {
+            // 🔴 AJOUT SÉCURITÉ : Si l'IA a répondu "IMPOSSIBLE" en statut 200 (si géré ainsi)
+            if (data.is_impossible) {
+                createMessageBubble("⚠ " + data.data, "system");
             }
+            createDashboardBubble(data);
+        }
             else if (data.type === "sql") {
                 createTable(data.data, data.sql_genere, data.dbs_utilisees); 
             }
@@ -932,14 +949,36 @@ if (response.visual_type === 'line_chart' || response.visual_type === 'bar_chart
                 console.log("Données reçues inconnues :", data);
             }
         })
-        .catch(err => {
+        /*.catch(err => {
             loading.classList.add('hidden');
             const callAlert = window.alertError || window.alert || alertError;
             if (typeof callAlert === 'function') callAlert("Impossible de joindre le serveur.");
             
             createMessageBubble("Erreur de communication serveur.", "system");
             console.error(err);
-        });
+        });*/
+        .catch(err => {
+        loading.classList.add('hidden');
+        const callAlert = window.alertError || window.alert || alertError;
+        
+        // 🔴 CRITIQUE 2 : Extraction dynamique du message du Backend intercepté
+        // Si 'err' est l'objet JSON envoyé par Django contenant la clé 'data'
+        let messageErreurBackend = "Erreur de communication serveur.";
+        
+        if (err && err.data) {
+            messageErreurBackend = err.data; // Récupère "Action bloquée...", "Cette demande fait référence à..."
+        } else if (err && typeof err === 'string') {
+            messageErreurBackend = err;
+        } else if (err && err.message) {
+            messageErreurBackend = err.message;
+        }
+
+        // Affichage dynamique personnalisé au lieu du texte générique
+        if (typeof callAlert === 'function') callAlert(messageErreurBackend);
+        createMessageBubble("⚠ " + messageErreurBackend, "system");
+        
+        console.error("Détail de l'erreur capturée :", err);
+    });
     });
 
     // 5. Événement Changement de Source SQL (Auto-submit sécurisé)

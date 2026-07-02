@@ -1265,41 +1265,6 @@ def recherche_naturelle(request):
                     }, #Demande de données impossible à mapper vers le catalogue actif.
                     status=400,
                 )
-            
-            """if "impossible" in requete_sql or not sql_nettoye:
-                # 1. Extraction dynamique de la cause écrite par l'agent IA
-                cause_detaillee = "Cette demande fait référence à des tables ou des colonnes absentes du catalogue actif."
-                if ":" in sql_nettoye:
-                    # On récupère tout ce qui est écrit après le premier caractère ':'
-                    cause_detaillee = sql_nettoye.split(":", 1)[1].strip() 
-
-                    # 2. Retour d'un dictionnaire parfaitement conforme pour le composant JavaScript
-                return JsonResponse(
-                    {
-                        "type": "sql_dashboard",
-                        "is_impossible": True,   # ← FLAG EXPLICITE pour le JS
-                        "visual_type": "table",
-                        "chart_config": {"x_axis": None, "y_axis": None},
-                        # On affiche la vraie cause de l'IA de manière élégante à l'écran
-                        "ai_insights": f"⚠️ **Demande Hors Périmètre** : {cause_detaillee}",
-                        "data_governance": "Analyse impossible : les structures requises n'existent pas dans le schéma.",
-                        "anomalies_alerts": "Requête rejetée par le dictionnaire de données actif.",
-                        "financial_impact": None,
-                        "elasticity_analysis": None,
-                        "system_efficiency": None,
-                        "divers": {
-                            "analyse_ecart_formule": None,
-                            "objectifs_mensuels_kpi": None,
-                            "benchmarking_sales": None,
-                        },
-                        "data": [],  # Tableau vide de sécurité pour éviter que le JS boucle dans le vide
-                        "count": 0,
-                        "sql_genere": sql_nettoye,  # Permet de voir le commentaire d'impossibilité dans le viewer SQL
-                        "dbs_utilisees": "Aucune",
-                        "agent_name": "Moteur Décisionnel (Sécurité)",
-                            },
-                            status=200,
-                        ) """  # On renvoie un statut 200 pour que le flux JS traite la réponse normalement
 
 
             mots_extraits = set(re.findall(r"\b[a-z_]+\b", sql_clean_lower))
